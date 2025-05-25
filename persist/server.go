@@ -22,7 +22,7 @@ func (s Server) Start() {
 		log.Fatalf("[Persist] Failed to initialize storage: %v", err)
 	}
 
-	fmt.Println("[Persist] Starting server on port", s.Port)
+	LogInfo(fmt.Sprintf("Starting server on port: %d", s.Port))
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", s.Port), nil); err != nil {
 		log.Fatal(err)
 	}
