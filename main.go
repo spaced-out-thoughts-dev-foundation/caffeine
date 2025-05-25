@@ -10,7 +10,7 @@ import (
 
 func DoAgentThings() {
 	todoAgent := agent.NewTodoOrganizerAgent("todo_list.txt")
-	if err := todoAgent.Init(nil); err != nil {
+	if err := todoAgent.Init(); err != nil {
 		observer.LogError("main", "Failed to initialize TodoOrganizerAgent: %v", err)
 		return
 	}
@@ -34,7 +34,7 @@ func main() {
 	// time.Sleep(1000000000)
 
 	for {
-		DoAgentThings()
+		go DoAgentThings()
 		time.Sleep(5 * time.Second)
 	}
 }

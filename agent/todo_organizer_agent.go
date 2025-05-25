@@ -21,7 +21,7 @@ func (a *TodoOrganizerAgent) String() string {
 	return "TodoOrganizerAgent"
 }
 
-func (a *TodoOrganizerAgent) Init(trigger Trigger) error {
+func (a *TodoOrganizerAgent) Init() error {
 	validationErr := a.Validate()
 	if validationErr != nil {
 		return fmt.Errorf("trigger validation failed: %w", validationErr)
