@@ -1,16 +1,17 @@
 # caffeine
 
-A systema and framework for agentic ai on resource constrained devices.
+Local first seems very much predicated on the "local thing" being a browser. [The seminal paper](https://www.inkandswitch.com/essay/local-first/) presents seven ideals:
 
-***
+1. No spinners: your work at your fingertips
+2. Your work is not trapped on one device
+3. The network is optional
+4. Seamless collaboration with your colleagues
+5. The Long Now
+6. Security and privacy by default
+7. You retain ultimate ownership and control
 
-## Design Space
+Yet, as I see it, only (1) necesitates a browser. What if we took this same model but we applied it to an airgapped sidecar running physically connected to the user's device, communicating directly with the application. Since these two devices are hard-wired and the "secure" device is airgapped, we should still get (1).
 
-* Ephemeral (no assumptions about on or off)
-* Designed to run on Raspberry Pi 4 Model B with 1gb ram
-
-***
-
-## How it Works
-
-Each agent is some bits with a trigger. The trigger determines when we push the work into a queue which will the be scheduled. The queue is backed by the naive storage system (`persist`).
+The [automerge](https://automerge.org/) libraries seem to converge on the following parts:
+1. underlying CRDT data structure
+2. a repo supporting network based syncing with a storage adapter as well
