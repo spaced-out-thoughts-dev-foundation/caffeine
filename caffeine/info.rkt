@@ -1,7 +1,7 @@
 #lang info
 
-(define collection "helloworld")
+(define collection "caffeine")
 (define deps '("base"))
 (define build-deps '("rackunit"))
-(define pkg-desc "A hello world language")
+(define pkg-desc "An SLO DSL")
 (define version "0.1")

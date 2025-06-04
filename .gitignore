@@ -1,0 +1,18 @@
+# Racket compilation artifacts
+compiled/
+*.zo
+*.dep
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.vscode/
+.idea/
+*~
+*.swp
+*.swo
+
+# Racket documentation build artifacts  
+doc/ 
