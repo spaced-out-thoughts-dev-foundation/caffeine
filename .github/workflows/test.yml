@@ -7,6 +7,54 @@ on:
     branches: [ main ]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Racket
+      uses: Bogdanp/setup-racket@v1.11
+      with:
+        architecture: 'x64'
+        distribution: 'full'
+        variant: 'CS'
+        version: '8.17'
+        
+    - name: Install review package
+      run: raco pkg install --auto review
+      
+    - name: Run raco check-requires
+      run: |
+        echo "Checking for unused requires on all Racket files..."
+        # Find all .rkt files and run check-requires on each
+        find . -name "*.rkt" -type f | while read -r file; do
+          echo "Checking requires for: $file"
+          raco check-requires "$file"
+        done
+        
+    - name: Run raco review (enforce code quality)
+      run: |
+        echo "Running code quality checks on all Racket files..."
+        # Find all .rkt files and run review on each
+        # Currently allowing warnings - remove '|| true' to enforce zero warnings
+        find . -name "*.rkt" -type f | while read -r file; do
+          echo "Reviewing: $file"
+          raco review "$file" || true
+        done
+        
+        # Alternative: Run review on all files at once (faster but less granular output)
+        # raco review $(find . -name "*.rkt" -type f) || true
+        
+        # For strict enforcement (zero warnings), replace '|| true' with nothing:
+        # find . -name "*.rkt" -type f | while read -r file; do
+        #   echo "Reviewing: $file"
+        #   raco review "$file"
+        # done
+        
+        echo "Code review completed!"
+        
   test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -30,6 +78,15 @@ jobs:
       run: |
         cd caffeine
         raco pkg install --auto
+        
+    - name: Quick lint check
+      run: |
+        echo "Running quick lint checks on all Racket files..."
+        # Quick check for unused requires on all .rkt files
+        find . -name "*.rkt" -type f | while read -r file; do
+          echo "Quick check: $file"
+          raco check-requires "$file"
+        done
         
     - name: Run tests
       run: racket test.rkt
