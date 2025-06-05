@@ -1,0 +1,47 @@
+name: Test Caffeine Language
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        racket-version: ['8.17']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Racket
+      uses: Bogdanp/setup-racket@v1.11
+      with:
+        architecture: 'x64'
+        distribution: 'full'
+        variant: 'CS'
+        version: ${{ matrix.racket-version }}
+        
+    - name: Install caffeine package
+      run: |
+        cd caffeine
+        raco pkg install --auto
+        
+    - name: Run tests
+      run: racket test.rkt
+      
+    - name: Verify tests passed
+      shell: bash
+      run: |
+        if racket test.rkt | grep -q "🎉 All tests passed!"; then
+          echo "✅ All tests passed successfully on ${{ matrix.os }}!"
+          exit 0
+        else
+          echo "❌ Tests failed on ${{ matrix.os }}!"
+          racket test.rkt  # Show the actual output for debugging
+          exit 1
+        fi 
