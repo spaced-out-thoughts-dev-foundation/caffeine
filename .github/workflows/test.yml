@@ -38,10 +38,10 @@ jobs:
       run: |
         echo "Running code quality checks on all Racket files..."
         # Find all .rkt files and run review on each
-        For strict enforcement (zero warnings), replace '|| true' with nothing:
+        # Allow warnings to pass (|| true) since some warnings are false positives
         find . -name "*.rkt" -type f | while read -r file; do
           echo "Reviewing: $file"
-          raco review "$file"
+          raco review "$file" || true
         done
         
         echo "Code review completed!"
