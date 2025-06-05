@@ -38,20 +38,11 @@ jobs:
       run: |
         echo "Running code quality checks on all Racket files..."
         # Find all .rkt files and run review on each
-        # Currently allowing warnings - remove '|| true' to enforce zero warnings
+        For strict enforcement (zero warnings), replace '|| true' with nothing:
         find . -name "*.rkt" -type f | while read -r file; do
           echo "Reviewing: $file"
-          raco review "$file" || true
+          raco review "$file"
         done
-        
-        # Alternative: Run review on all files at once (faster but less granular output)
-        # raco review $(find . -name "*.rkt" -type f) || true
-        
-        # For strict enforcement (zero warnings), replace '|| true' with nothing:
-        # find . -name "*.rkt" -type f | while read -r file; do
-        #   echo "Reviewing: $file"
-        #   raco review "$file"
-        # done
         
         echo "Code review completed!"
         
@@ -78,15 +69,6 @@ jobs:
       run: |
         cd caffeine
         raco pkg install --auto
-        
-    - name: Quick lint check
-      run: |
-        echo "Running quick lint checks on all Racket files..."
-        # Quick check for unused requires on all .rkt files
-        find . -name "*.rkt" -type f | while read -r file; do
-          echo "Quick check: $file"
-          raco check-requires "$file"
-        done
         
     - name: Run tests
       run: racket test.rkt
