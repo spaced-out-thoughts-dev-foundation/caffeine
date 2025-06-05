@@ -13,8 +13,8 @@
          (all-from-out "support/testing.rkt"))
 
 ;; Coffee functions
-(define (display-cafe)
-  "☕ Welcome to the cafe! Enjoy your coffee! ☕")
+(define (display-cafe flavor)
+  (string-append "☕ Welcome to the cafe! Enjoy your coffee! " flavor ". ☕"))
 
 (define-syntax-rule (caffeine-module-begin expr ...)
   (#%plain-module-begin

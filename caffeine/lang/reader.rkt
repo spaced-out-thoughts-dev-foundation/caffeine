@@ -7,7 +7,7 @@
   "Parse and transform caffeine-specific syntax"
   (cond
     [(eq? content 'cafe)
-     '(display-cafe)]
+     '"☕ Welcome to the cafe! Enjoy your coffee! ☕"]
     [(and (list? content) (not (null? content)))
      (map parse-caffeine-syntax content)]
     [else content]))
