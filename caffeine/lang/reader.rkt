@@ -29,6 +29,6 @@
           (string->symbol (path->string (file-name-from-path path-string))))
         'anonymous))
   (define module-form
-    `(module ,module-name "./caffeine/main.rkt"
+    `(module ,module-name "caffeine/main.rkt"
        ,@parsed-content))
   (datum->syntax #f module-form))

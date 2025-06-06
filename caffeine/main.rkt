@@ -5,10 +5,6 @@
 
 (provide (rename-out [caffeine-module-begin #%module-begin])
          #%app #%datum #%top
-         displayln printf format
-         equal? string=? length filter
-         + - * / > < >= <= = 
-         quote list car cdr cons null?
          display-cafe
          (all-from-out "support/testing.rkt"))
 
