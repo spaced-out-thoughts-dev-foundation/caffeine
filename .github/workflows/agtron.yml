@@ -1,0 +1,36 @@
+name: Test Agtron Constraint Verification Engine
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        ruby-version: ['3.4.4']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby-version }}
+        bundler-cache: true
+    
+    - name: Install dependencies
+      run: bundle install
+      working-directory: ./agtron
+    
+    - name: Run linter (StandardRB)
+      run: bundle exec standardrb
+      working-directory: ./agtron
+
+    - name: Run tests
+      run: bundle exec rspec
+      working-directory: ./agtron 

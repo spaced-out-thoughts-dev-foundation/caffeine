@@ -1,0 +1,11 @@
+# StandardRB configuration for Agtron
+ruby_version: 3.4
+
+# Files to ignore
+ignore:
+  - 'vendor/**/*'
+  - 'tmp/**/*'
+  - 'log/**/*'
+
+# Parallel processing
+parallel: true 
