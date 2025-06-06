@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rspec"
+require_relative "../lib/agtron"
 
 RSpec.configure do |config|
   # Use color in STDOUT
