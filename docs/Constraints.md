@@ -1,6 +1,18 @@
 # Constraints
 
-## First Order Constraints
+***
+
+## Constructing a Graph of Constraints
+
+Each service component is a node in the system connected to dependent components via directed edges. Thus, by transitively traversing the edges, it is possible to determine the relationship between two components. From this, we can determine the type of constraint and thus the reliability expectations.
+
+Specifically, we construct a directed graph (due to the nature of systems, we must support cyclical and acylical graphs alike... and thus do not choose a DAG as our data structure).
+
+***
+
+## Constraint Types
+
+### First Order Constraints
 
 When defining a threshold or objective for a service (an SLO), it's necessary to consider the decision space. It is not typically the _full_ range from 0 (no expectaton) to 100 (perfection). Instead, services usually have a minimum and a maximum defined by tertiary elements: SLAs (service level agreements, aka SLOs with contractual penalties on violation, hard dependencies, and general truths). Thus, we can may define a _decision space framework_ a bit like this:
 
@@ -16,7 +28,7 @@ Thus, leveraging our framework, we know we should aim for more than 3 nines, les
 
 These we call first order constraints since, within a graph of _dependencies_, they're directly connected to this service by a a single edge. 
 
-## N-Order Constraints
+### N-Order Constraints
 
 Most humans can probably reason about first order constraints. N-Order constraints are more challenging due to the way complex distributed system components interact and webs within a dependency graph. Just like first order constraints, here we seek to provide service owners with restricted decision spaces from which to iterate on for their SLOs. We forsee n-order constraint calculations to, at times, yield surprising results; i.e. decisions spaces well below the service owner's expectations, or, even worse, below their user's expectations. However, while unsatisfactory, this, in itself is an exceptionally useful result as it means the service owner may justify engineering a solution to:
 
