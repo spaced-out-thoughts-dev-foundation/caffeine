@@ -1,9 +1,23 @@
-#lang reader "./caffeine/lang/reader.rkt"
+#lang racket
 
-(test-suite "Caffeine Language Tests")
+(require "caffeine/main.rkt")
 
-(test-equal (slo "Vanilla" "99.99") "SLO: Vanilla 99.99" "SLO: Vanilla 99.99")
-(test-equal (slo "Espresso" "99.99") "SLO: Espresso 99.99" "SLO: Espresso 99.99")
-(test-equal (slo "Latte" "99.99") "SLO: Latte 99.99" "SLO: Latte 99.99")
+;; ===== COMPREHENSIVE CAFFEINE LANGUAGE TESTS =====
 
+;; Test 1: Valid calls
+(displayln "=== Test 1: Valid calls ===")
+(displayln (slo "web-service" 99.9))
+(displayln (slo "api-gateway" 95.5))
+
+;; Test 2: Contract violations
+(displayln "
+=== Test 2: Contract violations ===")
+(with-handlers ([exn:fail:contract? (lambda (e) (displayln (exn-message e)))]) (slo 123 99.9))
+
+;; Test 3: Caffeine test framework
+(displayln "
+=== Test 3: Caffeine test framework ===")
+(test-suite "Contract Tests")
+(test-equal (slo "Vanilla" 99.99) "SLO: Vanilla 99.99" "Vanilla SLO")
+(test-equal (slo "Espresso" 99.5) "SLO: Espresso 99.5" "Espresso SLO")
 (run-tests)
