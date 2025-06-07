@@ -9,8 +9,8 @@
          (all-from-out "support/testing.rkt"))
 
 ;; Main functions
-(define (slo service)
-  (string-append "SLO: " service))
+(define (slo service threshold)
+  (string-append "SLO: " service " " threshold))
 
 (define-syntax-rule (caffeine-module-begin expr ...)
   (#%plain-module-begin
