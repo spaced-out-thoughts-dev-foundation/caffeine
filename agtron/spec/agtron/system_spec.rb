@@ -43,7 +43,7 @@ RSpec.describe Agtron::System do
 
   describe "#add_component" do
     it "adds a component to the system" do
-      system.add_component(Agtron::Component.new("service_a"))
+      system.add_component(Agtron::Component.new("service_a", 90))
       expect(system.component_exists?("service_a")).to be(true)
     end
   end
@@ -70,7 +70,7 @@ RSpec.describe Agtron::System do
     end
 
     it "returns true when component exists" do
-      system.add_component(Agtron::Component.new("service_a"))
+      system.add_component(Agtron::Component.new("service_a", 85))
       expect(system.component_exists?("service_a")).to be(true)
     end
   end
@@ -81,7 +81,7 @@ RSpec.describe Agtron::System do
     end
 
     it "returns the component when it exists" do
-      component = Agtron::Component.new("service_a")
+      component = Agtron::Component.new("service_a", 75)
       system.add_component(component)
       expect(system.component_by_name("service_a")).to eq(component)
     end

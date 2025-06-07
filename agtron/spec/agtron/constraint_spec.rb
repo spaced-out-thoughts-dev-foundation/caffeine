@@ -1,8 +1,8 @@
 require_relative "../spec_helper"
 
 RSpec.describe Agtron::Constraint do
-  let(:origin) { Agtron::Component.new("origin") }
-  let(:dependent) { Agtron::Component.new("dependent") }
+  let(:origin) { Agtron::Component.new("origin", 100) }
+  let(:dependent) { Agtron::Component.new("dependent", 95) }
 
   describe "#initialize" do
     context "with valid parameters" do
