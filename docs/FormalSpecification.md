@@ -37,11 +37,11 @@ NEWLINE                ::= '\n' ;
 ## Example
 
 ```caffeine
-service_a is expected to be available 99.9% of the time and has dependencies on service_b, and service_d.
+service_a is expected to be available 99.9% of the time and has dependencies on service_b and service_d.
 
 service_b is expected to be available 99.99% of the time and has no dependencies.
 
-service_c is expected to be availble 99.9% of the time and has a dependency on service_b.
+service_c is expected to be available 99.9% of the time and has a dependency on service_b.
 
-service_d is expected to be available 99% of the time and has no dependencoes.
+service_d is expected to be available 99% of the time and has no dependencies.
 ```
