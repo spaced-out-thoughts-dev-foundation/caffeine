@@ -10,6 +10,7 @@ module Agtron
       @constraints = constraints
 
       raise "Cyclic dependency detected" unless acyclic?
+      availability_constraints_valid?
     end
 
     def add_component(component)
@@ -19,6 +20,7 @@ module Agtron
     def add_constraint(constraint)
       @constraints << constraint
       raise "Cyclic dependency detected" unless acyclic?
+      availability_constraints_valid?
     end
 
     def component_exists?(name)
@@ -65,7 +67,7 @@ module Agtron
     end
 
     def valid?
-      acyclic?
+      acyclic? && availability_constraints_valid?
     end
 
     # traverse entire graph to see if there is a path from origin to dependent
@@ -90,6 +92,47 @@ module Agtron
     end
 
     private
+
+    def availability_constraints_valid?
+      @components.each do |component|
+        # Skip components with unknown availability
+        next if component.availability == "unknown"
+
+        # Get all dependencies for this component
+        dependencies = get_all_dependencies(component.name)
+
+        dependencies.each do |dep_name|
+          dep_component = component_by_name(dep_name)
+          next unless dep_component # Skip if dependency is not a component (string name)
+          next if dep_component.availability == "unknown" # Skip unknown availability
+
+          if dep_component.availability < component.availability
+            raise "Invalid availability constraint: #{component.name} (#{component.availability}) depends on #{dep_component.name} (#{dep_component.availability}), but dependency has lower availability"
+          end
+        end
+      end
+      true
+    end
+
+    def get_all_dependencies(component_name)
+      dependencies = Set.new
+      visited = Set.new
+
+      collect_dependencies(component_name, dependencies, visited)
+      dependencies.to_a
+    end
+
+    def collect_dependencies(component_name, dependencies, visited)
+      return if visited.include?(component_name)
+      visited.add(component_name)
+
+      @constraints.each do |constraint|
+        if constraint.origin == component_name
+          dependencies.add(constraint.dependent)
+          collect_dependencies(constraint.dependent, dependencies, visited)
+        end
+      end
+    end
 
     def has_cycle_dfs(node, graph, visited, rec_stack)
       visited.add(node)

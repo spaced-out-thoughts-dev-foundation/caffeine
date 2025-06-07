@@ -39,6 +39,70 @@ RSpec.describe Agtron::System do
         Agtron::System.new([], nil)
       }.to raise_error("Invalid system: components and constraints must be non-nil")
     end
+
+    it "raises an error for invalid availability constraints" do
+      components = [
+        Agtron::Component.new("A", 99.0),
+        Agtron::Component.new("B", 95.0)
+      ]
+      constraints = [
+        Agtron::Constraint.new("hard", "A", "B")
+      ]
+
+      expect {
+        Agtron::System.new(components, constraints)
+      }.to raise_error(/Invalid availability constraint: A \(99.0\) depends on B \(95.0\)/)
+    end
+
+    it "does not raise an error for valid availability constraints" do
+      components = [
+        Agtron::Component.new("A", 95.0),
+        Agtron::Component.new("B", 99.0)
+      ]
+      constraints = [
+        Agtron::Constraint.new("hard", "A", "B")
+      ]
+
+      expect {
+        Agtron::System.new(components, constraints)
+      }.not_to raise_error
+    end
+
+    it "raises an error for invalid availability constraints in a more complex system" do
+      components = [
+        Agtron::Component.new("A", 99.9),
+        Agtron::Component.new("B", 99.9),
+        Agtron::Component.new("C", "unknown"),
+        Agtron::Component.new("D", 99.0)
+      ]
+      constraints = [
+        Agtron::Constraint.new("hard", "A", "B"),
+        Agtron::Constraint.new("hard", "B", "C"),
+        Agtron::Constraint.new("hard", "C", "D")
+      ]
+
+      expect {
+        Agtron::System.new(components, constraints)
+      }.to raise_error(/Invalid availability constraint: A \(99.9\) depends on D \(99.0\)/)
+    end
+
+    it "does not raise an error for valid availability constraints with unknown fallthrough" do
+      components = [
+        Agtron::Component.new("A", 99.9),
+        Agtron::Component.new("B", 99.9),
+        Agtron::Component.new("C", "unknown"),
+        Agtron::Component.new("D", 99.99)
+      ]
+      constraints = [
+        Agtron::Constraint.new("hard", "A", "B"),
+        Agtron::Constraint.new("hard", "B", "C"),
+        Agtron::Constraint.new("hard", "C", "D")
+      ]
+
+      expect {
+        Agtron::System.new(components, constraints)
+      }.not_to raise_error
+    end
   end
 
   describe "#add_component" do
@@ -206,6 +270,85 @@ RSpec.describe Agtron::System do
         system.add_constraint(Agtron::Constraint.new("hard", "service_b", "service_c"))
         system.add_constraint(Agtron::Constraint.new("hard", "service_c", "service_a"))
       }.to raise_error("Cyclic dependency detected")
+    end
+
+    context "with availability constraints" do
+      it "returns true for valid availability chain with unknown fallthrough" do
+        # A(99%) -> B(unknown) -> C(99.9%) -> D(99.9%)
+        system.add_component(Agtron::Component.new("A", 99.0))
+        system.add_component(Agtron::Component.new("B", "unknown"))
+        system.add_component(Agtron::Component.new("C", 99.9))
+        system.add_component(Agtron::Component.new("D", 99.9))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "A", "B"))
+        system.add_constraint(Agtron::Constraint.new("hard", "B", "C"))
+        system.add_constraint(Agtron::Constraint.new("hard", "C", "D"))
+
+        expect(system.valid?).to be(true)
+      end
+
+      it "raises error for invalid availability chain with unknown fallthrough" do
+        # A(99.95%) -> B(unknown) -> C(99.9%) -> D(99.9%)
+        system.add_component(Agtron::Component.new("A", 99.95))
+        system.add_component(Agtron::Component.new("B", "unknown"))
+        system.add_component(Agtron::Component.new("C", 99.9))
+        system.add_component(Agtron::Component.new("D", 99.9))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "A", "B"))
+
+        expect {
+          system.add_constraint(Agtron::Constraint.new("hard", "B", "C"))
+        }.to raise_error(/Invalid availability constraint: A \(99.95\) depends on C \(99.9\)/)
+      end
+
+      it "returns true when component has unknown availability" do
+        # A(unknown) -> B(50%) is valid because A is unknown
+        system.add_component(Agtron::Component.new("A", "unknown"))
+        system.add_component(Agtron::Component.new("B", 50.0))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "A", "B"))
+
+        expect(system.valid?).to be(true)
+      end
+
+      it "returns true for valid direct dependency relationship" do
+        # A(95%) -> B(99%) is valid
+        system.add_component(Agtron::Component.new("A", 95.0))
+        system.add_component(Agtron::Component.new("B", 99.0))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "A", "B"))
+
+        expect(system.valid?).to be(true)
+      end
+
+      it "raises error for invalid direct dependency relationship" do
+        # A(99%) -> B(95%) is invalid
+        system.add_component(Agtron::Component.new("A", 99.0))
+        system.add_component(Agtron::Component.new("B", 95.0))
+
+        expect {
+          system.add_constraint(Agtron::Constraint.new("hard", "A", "B"))
+        }.to raise_error(/Invalid availability constraint: A \(99.0\) depends on B \(95.0\)/)
+      end
+
+      it "returns true for equal availability" do
+        # A(95%) -> B(95%) is valid
+        system.add_component(Agtron::Component.new("A", 95.0))
+        system.add_component(Agtron::Component.new("B", 95.0))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "A", "B"))
+
+        expect(system.valid?).to be(true)
+      end
+
+      it "handles mixed string and component constraints" do
+        # Components with dependencies on string names (not Component objects)
+        system.add_component(Agtron::Component.new("service_a", 95.0))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_b"))
+
+        expect(system.valid?).to be(true)
+      end
     end
   end
 end
