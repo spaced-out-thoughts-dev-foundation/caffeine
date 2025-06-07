@@ -46,6 +46,12 @@ RSpec.describe Agtron::System do
       system.add_component(Agtron::Component.new("service_a", 90))
       expect(system.component_exists?("service_a")).to be(true)
     end
+
+    it "adds a component with unknown availability to the system" do
+      system.add_component(Agtron::Component.new("service_b", "unknown"))
+      expect(system.component_exists?("service_b")).to be(true)
+      expect(system.component_by_name("service_b").availability).to eq("unknown")
+    end
   end
 
   describe "#add_constraint" do
@@ -84,6 +90,13 @@ RSpec.describe Agtron::System do
       component = Agtron::Component.new("service_a", 75)
       system.add_component(component)
       expect(system.component_by_name("service_a")).to eq(component)
+    end
+
+    it "returns the component with unknown availability when it exists" do
+      component = Agtron::Component.new("service_unknown", "unknown")
+      system.add_component(component)
+      expect(system.component_by_name("service_unknown")).to eq(component)
+      expect(system.component_by_name("service_unknown").availability).to eq("unknown")
     end
   end
 

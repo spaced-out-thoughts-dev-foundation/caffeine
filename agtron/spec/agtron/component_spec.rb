@@ -28,37 +28,56 @@ RSpec.describe Agtron::Component do
         expect(component).to be_a(described_class)
         expect(component.availability).to eq(-10)
       end
+
+      it "creates a component with unknown availability" do
+        component = described_class.new("service_e", "unknown")
+        expect(component).to be_a(described_class)
+        expect(component.name).to eq("service_e")
+        expect(component.availability).to eq("unknown")
+      end
     end
 
     context "with invalid availability" do
-      it "raises error for string availability" do
+      it "raises error for string availability (other than 'unknown')" do
         expect {
           described_class.new("service_a", "available")
-        }.to raise_error("Availability must be a number")
+        }.to raise_error("Availability must be a number or 'unknown'")
       end
 
       it "raises error for nil availability" do
         expect {
           described_class.new("service_a", nil)
-        }.to raise_error("Availability must be a number")
+        }.to raise_error("Availability must be a number or 'unknown'")
       end
 
       it "raises error for boolean availability" do
         expect {
           described_class.new("service_a", true)
-        }.to raise_error("Availability must be a number")
+        }.to raise_error("Availability must be a number or 'unknown'")
       end
 
       it "raises error for array availability" do
         expect {
           described_class.new("service_a", [1, 2, 3])
-        }.to raise_error("Availability must be a number")
+        }.to raise_error("Availability must be a number or 'unknown'")
       end
 
       it "raises error for hash availability" do
         expect {
-          described_class.new("service_a", { availability: 100 })
-        }.to raise_error("Availability must be a number")
+          described_class.new("service_a", {availability: 100})
+        }.to raise_error("Availability must be a number or 'unknown'")
+      end
+
+      it "raises error for symbol availability (other than string 'unknown')" do
+        expect {
+          described_class.new("service_a", :unknown)
+        }.to raise_error("Availability must be a number or 'unknown'")
+      end
+
+      it "raises error for uppercase 'UNKNOWN'" do
+        expect {
+          described_class.new("service_a", "UNKNOWN")
+        }.to raise_error("Availability must be a number or 'unknown'")
       end
     end
   end
@@ -73,5 +92,13 @@ RSpec.describe Agtron::Component do
     it "has availability reader" do
       expect(component.availability).to eq(80)
     end
+
+    context "with unknown availability" do
+      let(:unknown_component) { described_class.new("unknown_service", "unknown") }
+
+      it "returns 'unknown' for availability" do
+        expect(unknown_component.availability).to eq("unknown")
+      end
+    end
   end
-end 
+end

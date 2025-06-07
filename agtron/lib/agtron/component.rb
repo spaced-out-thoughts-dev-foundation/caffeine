@@ -5,7 +5,7 @@ module Agtron
 
     def initialize(name, availability)
       validate_availability!(availability)
-      
+
       @name = name
       @availability = availability
     end
@@ -13,7 +13,9 @@ module Agtron
     private
 
     def validate_availability!(availability)
-      raise "Availability must be a number" unless availability.is_a?(Numeric)
+      unless availability.is_a?(Numeric) || availability == "unknown"
+        raise "Availability must be a number or 'unknown'"
+      end
     end
   end
 end
