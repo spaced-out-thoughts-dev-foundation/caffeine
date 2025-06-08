@@ -351,4 +351,136 @@ RSpec.describe Agtron::System do
       end
     end
   end
+
+  describe "#recommend_availability_range" do
+    context "with no constraints" do
+      it "returns default range [0, 100] for component with no dependencies or dependents" do
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 0, max: 100})
+      end
+    end
+
+    context "with direct dependencies only" do
+      it "returns range with max constrained by dependencies" do
+        system.add_component(Agtron::Component.new("service_b", 95.0))
+        system.add_component(Agtron::Component.new("service_c", 90.0))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_b"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_c"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 0, max: 90.0})
+      end
+
+      it "ignores unknown availability dependencies" do
+        system.add_component(Agtron::Component.new("service_b", 95.0))
+        system.add_component(Agtron::Component.new("service_c", "unknown"))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_b"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_c"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 0, max: 95.0})
+      end
+
+      it "returns max 100 when all dependencies are unknown" do
+        system.add_component(Agtron::Component.new("service_b", "unknown"))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_b"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 0, max: 100})
+      end
+
+      it "handles string dependencies that are not components" do
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "external_service"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 0, max: 100})
+      end
+    end
+
+    context "with direct dependents only" do
+      it "returns range with min constrained by dependents" do
+        system.add_component(Agtron::Component.new("service_b", 85.0))
+        system.add_component(Agtron::Component.new("service_c", 90.0))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_b", "service_a"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_c", "service_a"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 90.0, max: 100})
+      end
+
+      it "ignores unknown availability dependents" do
+        system.add_component(Agtron::Component.new("service_b", 85.0))
+        system.add_component(Agtron::Component.new("service_c", "unknown"))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_b", "service_a"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_c", "service_a"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 85.0, max: 100})
+      end
+
+      it "returns min 0 when all dependents are unknown" do
+        system.add_component(Agtron::Component.new("service_b", "unknown"))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_b", "service_a"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 0, max: 100})
+      end
+
+      it "handles string dependents that are not components" do
+        system.add_constraint(Agtron::Constraint.new("hard", "external_service", "service_a"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 0, max: 100})
+      end
+    end
+
+    context "with both dependencies and dependents" do
+      it "returns range constrained by both sides" do
+        system.add_component(Agtron::Component.new("service_x", 80.0))
+        system.add_component(Agtron::Component.new("service_y", 85.0))
+        system.add_component(Agtron::Component.new("service_b", 95.0))
+        system.add_component(Agtron::Component.new("service_c", 90.0))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_x", "service_a"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_y", "service_a"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_b"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_c"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 85.0, max: 90.0})
+      end
+
+      it "returns invalid range when constraints are impossible" do
+        system.add_component(Agtron::Component.new("service_x", 95.0))
+        system.add_component(Agtron::Component.new("service_b", 80.0))
+
+        system.instance_variable_get(:@constraints) << Agtron::Constraint.new("hard", "service_x", "service_a")
+        system.instance_variable_get(:@constraints) << Agtron::Constraint.new("hard", "service_a", "service_b")
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 95.0, max: 80.0})
+      end
+
+      it "handles mixed unknown availabilities" do
+        system.add_component(Agtron::Component.new("service_x", 80.0))
+        system.add_component(Agtron::Component.new("service_y", "unknown"))
+        system.add_component(Agtron::Component.new("service_b", "unknown"))
+        system.add_component(Agtron::Component.new("service_c", 90.0))
+
+        system.add_constraint(Agtron::Constraint.new("hard", "service_x", "service_a"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_y", "service_a"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_b"))
+        system.add_constraint(Agtron::Constraint.new("hard", "service_a", "service_c"))
+
+        range = system.recommend_availability_range("service_a")
+        expect(range).to eq({min: 80.0, max: 90.0})
+      end
+    end
+  end
 end

@@ -91,7 +91,54 @@ module Agtron
       (all_paths.length == 1) ? all_paths.first : all_paths
     end
 
+    def recommend_availability_range(component_name)
+      # Get direct dependencies (what this component depends on)
+      direct_dependencies = get_direct_dependencies(component_name)
+
+      # Get direct dependents (what depends on this component)
+      direct_dependents = get_direct_dependents(component_name)
+
+      # Calculate minimum: maximum of what depends on this component (or 0 if none)
+      min_availability = if direct_dependents.empty?
+        0
+      else
+        dependent_availabilities = direct_dependents.map do |dep_name|
+          dep_component = component_by_name(dep_name)
+          (dep_component && dep_component.availability != "unknown") ? dep_component.availability : nil
+        end.compact
+
+        dependent_availabilities.empty? ? 0 : dependent_availabilities.max
+      end
+
+      # Calculate maximum: minimum of what this component depends on (or 100 if none)
+      max_availability = if direct_dependencies.empty?
+        100
+      else
+        dependency_availabilities = direct_dependencies.map do |dep_name|
+          dep_component = component_by_name(dep_name)
+          (dep_component && dep_component.availability != "unknown") ? dep_component.availability : nil
+        end.compact
+
+        dependency_availabilities.empty? ? 100 : dependency_availabilities.min
+      end
+
+      {
+        min: min_availability,
+        max: max_availability
+      }
+    end
+
     private
+
+    def get_direct_dependencies(component_name)
+      @constraints.select { |constraint| constraint.origin == component_name }
+        .map { |constraint| constraint.dependent }
+    end
+
+    def get_direct_dependents(component_name)
+      @constraints.select { |constraint| constraint.dependent == component_name }
+        .map { |constraint| constraint.origin }
+    end
 
     def availability_constraints_valid?
       @components.each do |component|
