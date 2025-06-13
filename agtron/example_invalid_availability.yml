@@ -1,5 +1,0 @@
-- service: "high_availability_service"
-  availability: 99.9
-  depends_on: ["low_availability_service"]
-- service: "low_availability_service"
-  availability: 95.0 

@@ -1,6 +1,0 @@
-- service: "service_a"
-  depends_on: ["service_b"]
-- service: "service_b"
-  depends_on: ["service_c", "service_d"]
-- service: "service_c"
-- service: "service_d" 
