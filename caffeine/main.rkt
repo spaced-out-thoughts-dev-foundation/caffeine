@@ -15,4 +15,4 @@
 
 (define-syntax-rule (caffeine-module-begin expr ...)
   (#%plain-module-begin
-    expr ...))
+   expr ...))
