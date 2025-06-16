@@ -9,14 +9,30 @@
      (display PARSE-TREE)))
 (provide (rename-out [caffeine-mb #%module-begin]))
 
+;; ===== top level =====
+;; caffeine-program
 (define-macro (caffeine-program _ . SERVICE-DECLARATIONS)
   #'(string-append . SERVICE-DECLARATIONS))
 (provide caffeine-program)
 
-(define-macro (caffeine-service-declaration SERVICE-NAME _ _ _ THRESHOLD _ _ _)
-  #'(string-append SERVICE-NAME " expects " THRESHOLD "%.\n"))
+;; ===== higher level constructs =====
+;; caffeine-service-declaration
+(define-macro (caffeine-service-declaration SERVICE-NAME _ EXPECTATION _ _)
+  #'(string-append SERVICE-NAME " " EXPECTATION ".\n"))
 (provide caffeine-service-declaration)
 
+;; ===== building blocks =====
+;; caffeine-expectation
+(define-macro (caffeine-expectation EXPECTS-TOK _ THRESHOLD)
+  #'(string-append "expects " THRESHOLD))
+(provide caffeine-expectation)
+
+;; caffeine-threshold
+(define-macro (caffeine-threshold NUMBER-TOK _)
+  #'(string-append NUMBER-TOK "%"))
+(provide caffeine-threshold)
+
+;; caffeine-service-name
 (define-macro (caffeine-service-name WORD-TOK . REST)
   #'(string-append WORD-TOK 
      (if (empty? (filter string? (list . REST)))
@@ -24,6 +40,10 @@
          (string-append " " (string-join (filter string? (list . REST)) " ")))))
 (provide caffeine-service-name)
 
-(define-macro (ws . _)
+;; ===== basics =====
+;; caffeine-ws
+(define-macro (caffeine-ws . _)
   #'#f)
-(provide ws)
+(provide caffeine-ws)
+
+
