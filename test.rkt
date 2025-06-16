@@ -14,6 +14,6 @@
    (test-case "Execute hello.cf and check output"
      (define output (run-caffeine-file "test-example.cf"))
      (displayln (format "Output: ~a" output))
-     (check-equal? output "hello expects 99.9%.\nsalad expects 99.995%.\nauthentication service expects 98.5%.\n"))))
+     (check-equal? output "hello expects 99.9% and.\nsalad expects 99.995% and.\nauthentication service expects 98.5% and.\n"))))
 
 (run-tests hello-tests)

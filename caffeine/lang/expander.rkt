@@ -17,19 +17,19 @@
 
 ;; ===== higher level constructs =====
 ;; caffeine-service-declaration
-(define-macro (caffeine-service-declaration SERVICE-NAME _ EXPECTATION _ _)
-  #'(string-append SERVICE-NAME " " EXPECTATION ".\n"))
+(define-macro (caffeine-service-declaration SERVICE-NAME _ EXPECTATION _ AND-TOK DECLERATION-END)
+  #'(string-append SERVICE-NAME " " EXPECTATION " " AND-TOK DECLERATION-END))
 (provide caffeine-service-declaration)
 
 ;; ===== building blocks =====
 ;; caffeine-expectation
 (define-macro (caffeine-expectation EXPECTS-TOK _ THRESHOLD)
-  #'(string-append "expects " THRESHOLD))
+  #'(string-append EXPECTS-TOK " " THRESHOLD))
 (provide caffeine-expectation)
 
 ;; caffeine-threshold
-(define-macro (caffeine-threshold NUMBER-TOK _)
-  #'(string-append NUMBER-TOK "%"))
+(define-macro (caffeine-threshold NUMBER-TOK PERCENT-TOK)
+  #'(string-append NUMBER-TOK PERCENT-TOK))
 (provide caffeine-threshold)
 
 ;; caffeine-service-name
@@ -46,4 +46,12 @@
   #'#f)
 (provide caffeine-ws)
 
+;; caffeine-decleration-end
+(define-macro (caffeine-decleration-end PERIOD-TOK _)
+  #'(string-append PERIOD-TOK "\n"))
+(provide caffeine-decleration-end)
 
+;; caffeine-and
+(define-macro (caffeine-and AND-TOK _)
+  #'(string-append AND-TOK))
+(provide caffeine-and)

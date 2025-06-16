@@ -1,5 +1,5 @@
 #lang caffeine
 
-hello expects 99.9%.
-salad expects 99.995%.
-authentication service expects 98.5%.
+hello expects 99.9% and .
+salad expects 99.995% and .
+authentication service expects 98.5% and .
