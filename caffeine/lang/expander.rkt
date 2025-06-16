@@ -33,6 +33,6 @@
   #'(string-append WORD " expects " NUMBER "%.\n"))
 (provide caffeine-service-declaration)
 
-(define-macro (caffeine-program _ SERVICE-DECLARATIONS)
-  #'(string-append SERVICE-DECLARATIONS))
+(define-macro (caffeine-program _ . SERVICE-DECLARATIONS)
+  #'(string-append . SERVICE-DECLARATIONS))
 (provide caffeine-program)
