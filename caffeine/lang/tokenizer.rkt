@@ -11,6 +11,13 @@
        [whitespace (token 'WS-TOK)]
        ["expects" (token 'EXPECTS-TOK)]
        ["%" (token 'PERCENT-TOK)]
+       ["." (token 'PERIOD-TOK)]
+       [(repetition 1 +inf.0 (char-range #\a #\z)) (token 'WORD-TOK lexeme)]
+       [(union (repetition 1 +inf.0 (char-range #\0 #\9))
+               (concatenation (repetition 1 +inf.0 (char-range #\0 #\9))
+                            "."
+                            (repetition 1 +inf.0 (char-range #\0 #\9))))
+        (token 'NUMBER-TOK lexeme)]
        [any-char (token 'CHAR-TOK lexeme)]))
     (caffeine-lexer port))
   next-token)

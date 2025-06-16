@@ -1,2 +1,2 @@
 #lang caffeine
-hello expects success
+hello expects 99.9%.
