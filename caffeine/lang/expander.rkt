@@ -6,14 +6,24 @@
 
 (define-macro (caffeine-mb PARSE-TREE)
   #'(#%module-begin
-     (define result-string PARSE-TREE)
-     (display result-string)))
+     (display PARSE-TREE)))
 (provide (rename-out [caffeine-mb #%module-begin]))
 
 (define-macro (caffeine-char CHAR-TOK-VALUE)
   #'CHAR-TOK-VALUE)
 (provide caffeine-char)
 
-(define-macro (caffeine-program SIMPLE-STR ...)
-  #'(string-trim (string-append SIMPLE-STR ...)))
+(define-macro (caffeine-word WORD-VALUE ...)
+  #'(string-append WORD-VALUE ...))
+(provide caffeine-word)
+
+(define-macro (caffeine-expect EXPECTS-TOK-VALUE)
+  #'"expects")
+(provide caffeine-expect)
+
+(define-macro (ws . _)
+  #'#f)
+
+(define-macro (caffeine-program _ WORD1 _ EXPECT _ WORD2 _)
+  #'(string-trim (string-append WORD1 " " EXPECT " " WORD2)))
 (provide caffeine-program)

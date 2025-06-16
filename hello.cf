@@ -1,1 +1,2 @@
-hello world
+#lang caffeine
+hello expects success

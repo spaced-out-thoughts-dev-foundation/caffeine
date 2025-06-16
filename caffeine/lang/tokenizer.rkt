@@ -8,7 +8,10 @@
     (define caffeine-lexer
       (lexer
        [(from/to "//" "\n") (next-token)]
+       [whitespace (token 'WS-TOK)]
+       ["expects" (token 'EXPECTS-TOK)]
+       ["%" (token 'PERCENT-TOK)]
        [any-char (token 'CHAR-TOK lexeme)]))
-    (caffeine-lexer port))  
+    (caffeine-lexer port))
   next-token)
 (provide make-tokenizer)
