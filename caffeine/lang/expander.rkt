@@ -17,9 +17,15 @@
 
 ;; ===== higher level constructs =====
 ;; caffeine-service-declaration
-(define-macro (caffeine-service-declaration SERVICE-NAME _ EXPECTATION _ AND-TOK DECLERATION-END)
-  #'(string-append SERVICE-NAME " " EXPECTATION " " AND-TOK DECLERATION-END))
+(define-macro (caffeine-service-declaration SERVICE-NAME _ EXPECTATION _ AND-TOK DEPENDENCY DECLERATION-END)
+  #'(string-append SERVICE-NAME " " EXPECTATION " " AND-TOK " " DEPENDENCY DECLERATION-END))
 (provide caffeine-service-declaration)
+
+;; ===== medium level constructs =====
+;; caffeine-service-dependency
+(define-macro (caffeine-service-dependency _ DEPENDS-TOK _ ON-TOK _ SERVICE-NAME _)
+  #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME))
+(provide caffeine-service-dependency)
 
 ;; ===== building blocks =====
 ;; caffeine-expectation

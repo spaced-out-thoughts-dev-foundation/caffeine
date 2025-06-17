@@ -4,7 +4,10 @@
 caffeine-program             ::= caffeine-ws (caffeine-service-declaration)+
 
 ;; higher level constructs
-caffeine-service-declaration ::= caffeine-service-name caffeine-ws caffeine-expectation caffeine-ws caffeine-and caffeine-decleration-end
+caffeine-service-declaration ::= caffeine-service-name caffeine-ws caffeine-expectation caffeine-ws caffeine-and caffeine-service-dependency caffeine-decleration-end
+
+;; medium level constructs
+caffeine-service-dependency  ::= caffeine-ws DEPENDS-TOK caffeine-ws ON-TOK caffeine-ws caffeine-service-name caffeine-ws
 
 ;; building blocks
 caffeine-expectation         ::= EXPECTS-TOK caffeine-ws caffeine-threshold 

@@ -9,8 +9,9 @@
       (lexer
        [(from/to "//" "\n") (next-token)]
        [whitespace (token 'WS-TOK)]
-       ["and" (token 'AND-TOK lexeme)]
-       ["expects" (token 'EXPECTS-TOK lexeme)]
+       [(union "and" "expects" "on" "depends")
+        (token (string->symbol (string-append (string-upcase lexeme) "-TOK"))
+               lexeme)]
        ["%" (token 'PERCENT-TOK lexeme)]
        ["." (token 'PERIOD-TOK lexeme)]
        [(repetition 1 +inf.0 (char-range #\a #\z)) (token 'WORD-TOK lexeme)]
