@@ -11,14 +11,14 @@
 
 ;; ===== top level =====
 ;; caffeine-program
-(define-macro (caffeine-program _ . SERVICE-DECLARATIONS)
+(define-macro (caffeine-program . SERVICE-DECLARATIONS)
   #'(string-append . SERVICE-DECLARATIONS))
 (provide caffeine-program)
 ;; =================================================
 
 ;; ===== higher level constructs =====
 ;; caffeine-service-declaration
-(define-macro (caffeine-service-declaration SERVICE-NAME _ EXPECTATION _ AND-TOK DEPENDENCY DECLERATION-END)
+(define-macro (caffeine-service-declaration SERVICE-NAME EXPECTATION AND-TOK DEPENDENCY DECLERATION-END)
   #'(string-append SERVICE-NAME " " EXPECTATION " " AND-TOK " " DEPENDENCY DECLERATION-END))
 (provide caffeine-service-declaration)
 ;; =================================================
@@ -29,34 +29,34 @@
   #'(string-append DEPENDENCY))
 (provide caffeine-service-dependency)
 ;; single-dependency
-(define-macro (single-dependency _ DEPENDS-TOK _ ON-TOK _ SERVICE-NAME _)
+(define-macro (single-dependency DEPENDS-TOK ON-TOK SERVICE-NAME)
   #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME))
 (provide single-dependency)
 
 ;; no-dependencies
-(define-macro (no-dependencies _ HAS-TOK _ NO-TOK _ DEPENDENCIES-TOK _)
+(define-macro (no-dependencies HAS-TOK NO-TOK DEPENDENCIES-TOK)
   #'(string-append HAS-TOK " " NO-TOK " " DEPENDENCIES-TOK))
 (provide no-dependencies)
 
 ;; multiple-dependencies
-(define-macro (multiple-dependencies _ DEPENDS-TOK _ ON-TOK _ SERVICE-NAME DEPENDENCY-LIST)
+(define-macro (multiple-dependencies DEPENDS-TOK ON-TOK SERVICE-NAME DEPENDENCY-LIST)
   #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME " " DEPENDENCY-LIST))
 (provide multiple-dependencies)
 
 ;; dependency-list
-(define-macro (dependency-list _ . DEPENDENCY-LIST-ITEMS)
+(define-macro (dependency-list . DEPENDENCY-LIST-ITEMS)
   #'(string-append (string-join (filter string? (list . DEPENDENCY-LIST-ITEMS)) " ")))
 (provide dependency-list)
 
 ;; dependency-list-item
-(define-macro (dependency-list-item AND-TOK _ SERVICE-NAME)
+(define-macro (dependency-list-item AND-TOK SERVICE-NAME)
   #'(string-append AND-TOK " " SERVICE-NAME))
 (provide dependency-list-item)
 ;; =================================================
 
 ;; ===== building blocks =====
 ;; caffeine-expectation
-(define-macro (caffeine-expectation EXPECTS-TOK _ THRESHOLD)
+(define-macro (caffeine-expectation EXPECTS-TOK THRESHOLD)
   #'(string-append EXPECTS-TOK " " THRESHOLD))
 (provide caffeine-expectation)
 
@@ -75,18 +75,14 @@
 ;; =================================================
 
 ;; ===== basics =====
-;; caffeine-ws
-(define-macro (caffeine-ws . _)
-  #'#f)
-(provide caffeine-ws)
 
 ;; caffeine-decleration-end
-(define-macro (caffeine-decleration-end PERIOD-TOK _)
+(define-macro (caffeine-decleration-end PERIOD-TOK)
   #'(string-append PERIOD-TOK "\n"))
 (provide caffeine-decleration-end)
 
 ;; caffeine-and
-(define-macro (caffeine-and AND-TOK _)
+(define-macro (caffeine-and AND-TOK)
   #'(string-append AND-TOK))
 (provide caffeine-and)
 ;; =================================================
