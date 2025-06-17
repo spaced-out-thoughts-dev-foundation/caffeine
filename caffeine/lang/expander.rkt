@@ -54,8 +54,8 @@
 
 ;; ===== building blocks =====
 ;; caffeine-expectation
-(define-macro (caffeine-expectation EXPECTS-TOK THRESHOLD)
-  #'(string-append EXPECTS-TOK " " THRESHOLD))
+(define-macro (caffeine-expectation EXPECTS-TOK THRESHOLD AVAILABILITY-TOK)
+  #'(string-append EXPECTS-TOK " " THRESHOLD " " AVAILABILITY-TOK))
 (provide caffeine-expectation)
 
 ;; caffeine-threshold
@@ -73,7 +73,6 @@
 ;; =================================================
 
 ;; ===== basics =====
-
 ;; caffeine-decleration-end
 (define-macro (caffeine-decleration-end PERIOD-TOK)
   #'(string-append PERIOD-TOK "\n"))

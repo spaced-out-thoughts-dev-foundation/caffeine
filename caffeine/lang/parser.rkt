@@ -14,7 +14,7 @@ dependency-list-item         ::= AND-TOK caffeine-service-name
 no-dependencies              ::= HAS-TOK NO-TOK DEPENDENCIES-TOK
 
 ;; building blocks
-caffeine-expectation         ::= EXPECTS-TOK caffeine-threshold 
+caffeine-expectation         ::= EXPECTS-TOK caffeine-threshold AVAILABILITY-TOK
 caffeine-threshold           ::= NUMBER-TOK PERCENT-TOK
 caffeine-service-name        ::= WORD-TOK [WORD-TOK]*
 

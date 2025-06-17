@@ -1,6 +1,6 @@
 #lang caffeine
 
-hello expects 99.9% and depends on salad.
-salad expects 99.995% and has no dependencies.
-tasty fruit bar expects 99.999% and has no dependencies.
-authentication service expects 98.5% and depends on salad and hello and tasty fruit bar.
+hello expects 99.9% availability and depends on salad.
+salad expects 99.995% availability and has no dependencies.
+tasty fruit bar expects 99.999% availability and has no dependencies.
+authentication service expects 98.5% availability and depends on salad and hello and tasty fruit bar.
