@@ -74,7 +74,7 @@ jobs:
       shell: bash
       run: |
         # Capture the test output and exit code
-        if output=$(racket test.rkt 2>&1) && echo "$output" | grep -q "0 failure(s) 0 error(s)"; then
+        if output=$(racket caffeine/test.rkt 2>&1) && echo "$output" | grep -q "0 failure(s) 0 error(s)"; then
           echo "✅ All tests passed successfully on ${{ matrix.os }}!"
           echo "Test output:"
           echo "$output"
