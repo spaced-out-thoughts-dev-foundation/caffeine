@@ -70,17 +70,18 @@ jobs:
         cd caffeine
         raco pkg install --auto
         
-    - name: Run tests
-      run: racket test.rkt
-      
-    - name: Verify tests passed
+    - name: Run tests and verify results
       shell: bash
       run: |
-        if racket test.rkt | grep -q "🎉 All tests passed!"; then
+        # Capture the test output and exit code
+        if output=$(racket test.rkt 2>&1) && echo "$output" | grep -q "0 failure(s) 0 error(s)"; then
           echo "✅ All tests passed successfully on ${{ matrix.os }}!"
+          echo "Test output:"
+          echo "$output"
           exit 0
         else
           echo "❌ Tests failed on ${{ matrix.os }}!"
-          racket test.rkt  # Show the actual output for debugging
+          echo "Test output:"
+          echo "$output"
           exit 1
         fi 
