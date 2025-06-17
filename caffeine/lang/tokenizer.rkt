@@ -9,7 +9,7 @@
       (lexer
        [(from/to "//" "\n") (next-token)]
        [whitespace (token 'WS-TOK)]
-       [(union "and" "expects" "on" "depends")
+       [(union "and" "expects" "on" "depends" "has" "no" "dependencies")
         (token (string->symbol (string-append (string-upcase lexeme) "-TOK"))
                lexeme)]
        ["%" (token 'PERCENT-TOK lexeme)]

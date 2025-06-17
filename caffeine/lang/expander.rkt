@@ -14,18 +14,30 @@
 (define-macro (caffeine-program _ . SERVICE-DECLARATIONS)
   #'(string-append . SERVICE-DECLARATIONS))
 (provide caffeine-program)
+;; =================================================
 
 ;; ===== higher level constructs =====
 ;; caffeine-service-declaration
 (define-macro (caffeine-service-declaration SERVICE-NAME _ EXPECTATION _ AND-TOK DEPENDENCY DECLERATION-END)
   #'(string-append SERVICE-NAME " " EXPECTATION " " AND-TOK " " DEPENDENCY DECLERATION-END))
 (provide caffeine-service-declaration)
+;; =================================================
 
 ;; ===== medium level constructs =====
 ;; caffeine-service-dependency
-(define-macro (caffeine-service-dependency _ DEPENDS-TOK _ ON-TOK _ SERVICE-NAME _)
-  #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME))
+(define-macro (caffeine-service-dependency DEPENDENCY)
+  #'(string-append DEPENDENCY))
 (provide caffeine-service-dependency)
+;; single-dependency
+(define-macro (single-dependency _ DEPENDS-TOK _ ON-TOK _ SERVICE-NAME _)
+  #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME))
+(provide single-dependency)
+
+;; no-dependency
+(define-macro (no-dependency _ HAS-TOK _ NO-TOK _ DEPENDENCIES-TOK _)
+  #'(string-append HAS-TOK " " NO-TOK " " DEPENDENCIES-TOK))
+(provide no-dependency)
+;; =================================================
 
 ;; ===== building blocks =====
 ;; caffeine-expectation
@@ -45,6 +57,7 @@
          ""
          (string-append " " (string-join (filter string? (list . REST)) " ")))))
 (provide caffeine-service-name)
+;; =================================================
 
 ;; ===== basics =====
 ;; caffeine-ws
@@ -61,3 +74,4 @@
 (define-macro (caffeine-and AND-TOK _)
   #'(string-append AND-TOK))
 (provide caffeine-and)
+;; =================================================
