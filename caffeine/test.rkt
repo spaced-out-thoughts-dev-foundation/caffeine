@@ -10,7 +10,8 @@
   (test-suite
    "Caffeine Parser Tests"
    (test-case "Parse caffeine file and check structured output"
-     (define output (run-caffeine-file "test-example.cf"))
+     (define test-file (build-path (current-directory) "test-example.cf"))
+     (define output (run-caffeine-file (path->string test-file)))
      (displayln (format "Parsed data: ~a" output))
      (check-equal? output 
                    '(caffeine-program 
