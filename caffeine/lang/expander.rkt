@@ -28,20 +28,18 @@
 (define-macro (caffeine-service-dependency DEPENDENCY)
   #'(string-append DEPENDENCY))
 (provide caffeine-service-dependency)
-;; single-dependency
-(define-macro (single-dependency DEPENDS-TOK ON-TOK SERVICE-NAME)
-  #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME))
-(provide single-dependency)
+
+;; dependencies
+(define-macro (dependencies DEPENDS-TOK ON-TOK SERVICE-NAME . DEPENDENCY-LIST)
+  #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME (if (empty? (filter string? (list . DEPENDENCY-LIST)))
+         ""
+         (string-append " " (string-join (filter string? (list . DEPENDENCY-LIST)) " ")))))
+(provide dependencies)
 
 ;; no-dependencies
 (define-macro (no-dependencies HAS-TOK NO-TOK DEPENDENCIES-TOK)
   #'(string-append HAS-TOK " " NO-TOK " " DEPENDENCIES-TOK))
 (provide no-dependencies)
-
-;; multiple-dependencies
-(define-macro (multiple-dependencies DEPENDS-TOK ON-TOK SERVICE-NAME DEPENDENCY-LIST)
-  #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME " " DEPENDENCY-LIST))
-(provide multiple-dependencies)
 
 ;; dependency-list
 (define-macro (dependency-list . DEPENDENCY-LIST-ITEMS)

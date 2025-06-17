@@ -7,9 +7,8 @@ caffeine-program             ::= (caffeine-service-declaration)+
 caffeine-service-declaration ::= caffeine-service-name caffeine-expectation caffeine-and caffeine-service-dependency caffeine-decleration-end
 
 ;; medium level constructs
-caffeine-service-dependency  ::= multiple-dependencies | single-dependency | no-dependencies
-single-dependency            ::= DEPENDS-TOK ON-TOK caffeine-service-name
-multiple-dependencies        ::= DEPENDS-TOK ON-TOK caffeine-service-name dependency-list
+caffeine-service-dependency  ::= dependencies | no-dependencies
+dependencies                 ::= DEPENDS-TOK ON-TOK caffeine-service-name [dependency-list]*
 dependency-list              ::= (dependency-list-item)+
 dependency-list-item         ::= AND-TOK caffeine-service-name
 no-dependencies              ::= HAS-TOK NO-TOK DEPENDENCIES-TOK
