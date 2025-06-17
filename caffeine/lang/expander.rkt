@@ -33,10 +33,25 @@
   #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME))
 (provide single-dependency)
 
-;; no-dependency
-(define-macro (no-dependency _ HAS-TOK _ NO-TOK _ DEPENDENCIES-TOK _)
+;; no-dependencies
+(define-macro (no-dependencies _ HAS-TOK _ NO-TOK _ DEPENDENCIES-TOK _)
   #'(string-append HAS-TOK " " NO-TOK " " DEPENDENCIES-TOK))
-(provide no-dependency)
+(provide no-dependencies)
+
+;; multiple-dependencies
+(define-macro (multiple-dependencies _ DEPENDS-TOK _ ON-TOK _ SERVICE-NAME DEPENDENCY-LIST)
+  #'(string-append DEPENDS-TOK " " ON-TOK " " SERVICE-NAME " " DEPENDENCY-LIST))
+(provide multiple-dependencies)
+
+;; dependency-list
+(define-macro (dependency-list _ . DEPENDENCY-LIST-ITEMS)
+  #'(string-append (string-join (filter string? (list . DEPENDENCY-LIST-ITEMS)) " ")))
+(provide dependency-list)
+
+;; dependency-list-item
+(define-macro (dependency-list-item AND-TOK _ SERVICE-NAME)
+  #'(string-append AND-TOK " " SERVICE-NAME))
+(provide dependency-list-item)
 ;; =================================================
 
 ;; ===== building blocks =====

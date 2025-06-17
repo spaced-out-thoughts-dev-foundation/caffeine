@@ -7,9 +7,12 @@ caffeine-program             ::= caffeine-ws (caffeine-service-declaration)+
 caffeine-service-declaration ::= caffeine-service-name caffeine-ws caffeine-expectation caffeine-ws caffeine-and caffeine-service-dependency caffeine-decleration-end
 
 ;; medium level constructs
-caffeine-service-dependency  ::= single-dependency | no-dependency
+caffeine-service-dependency  ::= multiple-dependencies | single-dependency | no-dependencies
 single-dependency            ::= caffeine-ws DEPENDS-TOK caffeine-ws ON-TOK caffeine-ws caffeine-service-name caffeine-ws
-no-dependency                ::= caffeine-ws HAS-TOK caffeine-ws NO-TOK caffeine-ws DEPENDENCIES-TOK caffeine-ws
+multiple-dependencies        ::= caffeine-ws DEPENDS-TOK caffeine-ws ON-TOK caffeine-ws caffeine-service-name dependency-list
+dependency-list              ::= (caffeine-ws dependency-list-item)+
+dependency-list-item         ::= AND-TOK caffeine-ws caffeine-service-name
+no-dependencies              ::= caffeine-ws HAS-TOK caffeine-ws NO-TOK caffeine-ws DEPENDENCIES-TOK caffeine-ws
 
 ;; building blocks
 caffeine-expectation         ::= EXPECTS-TOK caffeine-ws caffeine-threshold 

@@ -2,4 +2,5 @@
 
 hello expects 99.9% and depends on salad.
 salad expects 99.995% and has no dependencies.
-authentication service expects 98.5% and depends on salad.
+tasty fruit bar expects 99.999% and has no dependencies.
+authentication service expects 98.5% and depends on salad and hello and tasty fruit bar.
