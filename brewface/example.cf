@@ -1,8 +1,6 @@
 #lang caffeine
 
-hello expects 99% availability and depends on salad.
 salad expects 99.95% availability and depends on authentication service.
-veggie expects 99.95% availability and has no dependencies.
-authentication service expects 99% availability and depends on salad and hello and veggie and database.
+veggie sauce expects 99.95% availability and has no dependencies.
+authentication service expects 99% availability and depends on salad and hello and veggie sauce and database.
 database expects 99.999% availability and depends on aws.
-aws expects 99.9999% availability and has no dependencies.

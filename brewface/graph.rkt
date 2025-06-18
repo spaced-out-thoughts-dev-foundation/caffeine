@@ -15,7 +15,14 @@
                 [dependencies #f]
                 [availabilities #f]
                 [cf-file-path #f])
-    (super-new)
+    (init [parent #f]
+          [style '()]
+          [min-width #f]
+          [min-height #f])
+    (super-new [parent parent]
+               [style style]
+               [min-width min-width]
+               [min-height min-height])
     
     ;; Initialize data - either from parameters or by parsing cf file
     (cond
@@ -168,14 +175,13 @@
         (define color "lightblue")
         (define diameter (* node-radius 2))
         
-        ;; Draw circle with unique color (uniform radius)
+        ;; Draw circle with unique color (uniform radius) - no border
         (send dc set-brush color 'solid)
+        (send dc set-pen color 0 'transparent)  ; Remove black border by setting transparent pen
         (send dc draw-ellipse (- x node-radius) (- y node-radius) diameter diameter)
         
-        ;; Draw black border
-        (send dc set-pen "black" 2 'solid)
-        (send dc set-brush "transparent" 'solid)
-        (send dc draw-ellipse (- x node-radius) (- y node-radius) diameter diameter)
+        ;; Reset pen to black for other drawing operations
+        ; (send dc set-pen "black" 2 'solid)
         
         ;; Draw service name in yellow
         (send dc set-text-foreground "yellow")
