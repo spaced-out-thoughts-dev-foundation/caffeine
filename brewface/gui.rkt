@@ -4,6 +4,8 @@
 (require "graph.rkt")
 (require "file-watcher.rkt")
 (require racket/date)
+(require net/url)
+(require net/sendurl)
 
 ;; Global variables
 (define caffeine-file (build-path (current-directory) "example.cf"))
@@ -56,28 +58,56 @@
 ;; Initial data processing
 (define-values (service-names valid-dependencies service-availabilities) (process-caffeine-file))
 
-;; Create UI
-(define frame (new frame% 
-                   [label "Brewface - Service Dependency Graph"]
-                   [width 1200]
-                   [height 800]))
+;; Define colors to match Zen SRE Studio aesthetic
+(define zen-bg-color (make-color 18 18 18))      ; Dark background
+(define zen-panel-color (make-color 28 28 28))   ; Slightly lighter panels
+(define zen-accent-color (make-color 0 122 255)) ; Blue accent
+(define zen-text-color (make-color 255 255 255)) ; White text
 
-(define panel (new vertical-panel% [parent frame]))
+;; Create UI with Zen SRE Studio styling
+(define frame (new frame% 
+                   [label "Brewface - Service Dependency Graph | Powered by Zen SRE Studio"]
+                   [width 1200]
+                   [height 850]))
+
+(define main-panel (new vertical-panel% 
+                        [parent frame]
+                        [style '(border)]
+                        [border 0]))
 
 (set! graph-canvas (new graph-canvas% 
-                        [parent panel]
+                        [parent main-panel]
                         [services service-names]
                         [dependencies valid-dependencies]
                         [availabilities service-availabilities]
                         [min-width 1100]
                         [min-height 700]))
 
+;; Create bottom panel for all buttons
+(define button-panel (new horizontal-panel% 
+                          [parent main-panel]
+                          [stretchable-height #f]
+                          [min-height 50]))
+
+(define sync-button (new button%
+                         [parent button-panel]
+                         [label "Sync"]
+                         [callback (lambda (button event)
+                                     (message-box "Sync" "Sync operation will be available soon for infrastructure as code deployment." frame))]))
+
 (define close-button (new button%
-                          [parent panel]
+                          [parent button-panel]
                           [label "Close"]
                           [callback (lambda (button event)
                                       (stop-file-watcher (path->string caffeine-file))
                                       (send frame show #f))]))
+
+;; Zen SRE Studio navigation button
+(define zen-visit-button (new button%
+                              [parent button-panel]
+                              [label "🧘 Zen SRE Studio →"]
+                              [callback (lambda (button event)
+                                          (send-url "https://zen.sre.studio/"))]))
 
 ;; Start file watching
 (start-file-watcher (path->string caffeine-file) on-file-changed 0.5)
