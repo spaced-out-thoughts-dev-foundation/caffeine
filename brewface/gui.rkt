@@ -93,6 +93,11 @@
                          [parent button-panel]
                          [label "Sync"]
                          [callback (lambda (button event)
+                                     ;; Log the current parsed caffeine state
+                                     (define-values (service-names valid-dependencies service-availabilities) (process-caffeine-file))
+                                     (printf "DEBUG sync: services=~a (length=~a)~n" service-names (length service-names))
+                                     (printf "DEBUG sync: dependencies=~a (length=~a)~n" valid-dependencies (length valid-dependencies))
+                                     (printf "DEBUG sync: availabilities=~a (length=~a)~n" service-availabilities (length service-availabilities))
                                      (message-box "Sync" "Sync operation will be available soon for infrastructure as code deployment." frame))]))
 
 (define close-button (new button%
