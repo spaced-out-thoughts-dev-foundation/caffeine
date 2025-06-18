@@ -1,0 +1,81 @@
+name: Test Roast IR Processing Library
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'roast/**'
+      - 'caffeine/**'
+      - '.github/workflows/roast.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'roast/**'
+      - 'caffeine/**'
+      - '.github/workflows/roast.yml'
+
+jobs:
+  test-roast:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Racket
+      uses: Bogdanp/setup-racket@v1.11
+      with:
+        architecture: 'x64'
+        distribution: 'full'
+        variant: 'CS'
+        version: '8.17'
+        
+    - name: Install caffeine dependency
+      run: |
+        cd caffeine
+        raco pkg install --auto
+        
+    - name: Test roast IR processing
+      shell: bash
+      run: |
+        echo "Testing roast IR processing library..."
+        
+        # Test core IR processing functionality
+        cd roast
+        racket test.rkt
+        
+        echo "✅ Roast IR processing tests passed!"
+        
+    - name: Test roast example usage
+      shell: bash
+      run: |
+        echo "Testing roast example usage pattern..."
+        
+        cd roast
+        racket example.rkt
+        
+        echo "✅ Roast example demonstrates ideal usage pattern!"
+        
+    - name: Test roast-caffeine integration
+      shell: bash
+      run: |
+        echo "Testing integration between caffeine DSL and roast IR processing..."
+        
+        # Test that roast can process caffeine IR data
+        cd roast
+        racket -e "(require \"main.rkt\" \"file-loader.rkt\") (define ir-data (load-caffeine-file \"../caffeine/test-example.cf\")) (define-values (services deps avails) (process-ir-data ir-data)) (printf \"Integration test: ~a services, ~a dependencies processed\n\" (length services) (length deps)) (exit 0)"
+        
+        echo "✅ Integration test passed - roast successfully processes caffeine IR data!"
+        
+    - name: Test roast module separation
+      shell: bash
+      run: |
+        echo "Testing roast module separation and clean architecture..."
+        
+        # Test that parser.rkt works independently with IR data
+        cd roast
+        racket -e "(require \"parser.rkt\") (define test-ir '(caffeine-program (service \"test\" 99.9 (\"dep\")) (service \"dep\" 99.5 ()))) (define services (extract-services test-ir)) (printf \"Parser test: extracted ~a services\n\" (length services)) (exit 0)"
+        
+        # Test that utils.rkt works with processed data
+        racket -e "(require \"utils.rkt\") (define services '(\"a\" \"b\" \"c\")) (define-values (name-idx idx-name) (create-service-mapping services)) (printf \"Utils test: mapped ~a services\n\" (length services)) (exit 0)"
+        
+        echo "✅ Module separation test passed - clean IR-first architecture verified!" 

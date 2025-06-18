@@ -2,7 +2,8 @@
 (require racket/string)
 (require racket/file)
 (require racket/random)
-(require "../caffeine/main.rkt")
+(require "../roast/file-loader.rkt")
+(require "../roast/main.rkt")
 (require "file-watcher.rkt")
 
 ;; Export the graph-canvas% class
@@ -32,8 +33,9 @@
        (set! dependencies (or dependencies '((0 1) (1 2))))
        (set! availabilities (or availabilities '(99.9 95.5 98.2)))]
       [cf-file-path 
-       ;; Parse from cf file
-       (define-values (s d a) (create-graph-from-cf cf-file-path))
+       ;; Load and process cf file using ideal IR pattern
+       (define ir-data (load-caffeine-file cf-file-path))
+       (define-values (s d a) (process-ir-data ir-data))
        (set! services s)
        (set! dependencies d)
        (set! availabilities a)]
@@ -51,119 +53,85 @@
     (define last-mouse-y 0)
     
     ;; Method to update the graph data and refresh
-    (define/public (update-graph new-services new-dependencies [new-availabilities '()])
-      (printf "DEBUG update-graph: received services=~a, deps=~a, avail=~a~n" 
-              new-services new-dependencies new-availabilities)
+    (define/public (update-graph new-services new-dependencies new-availabilities)
       (set! services new-services)
       (set! dependencies new-dependencies)
-      (when (not (null? new-availabilities))
-        (set! availabilities new-availabilities))
-      (printf "DEBUG update-graph: after setting - services=~a, deps=~a, avail=~a~n" 
-              services dependencies availabilities)
-      (printf "DEBUG update-graph: calling refresh~n")
-      (send this refresh)
-      (printf "DEBUG update-graph: refresh completed~n"))
+      (set! availabilities new-availabilities)
+      (send this refresh))
     
-    ;; Calculate positions and uniform radius for all nodes
-    (define (calculate-positions services)
-      (define num-services (length services))
-      (if (= num-services 0)
-          '()
-          (let ([center-x (+ 400 offset-x)]
-                [center-y (+ 300 offset-y)]
-                [layout-radius (min 250 (max 150 (* 50 num-services)))])
-            
-            ;; First pass: calculate all individual radii to find the maximum
-            (define temp-bitmap (make-bitmap 1 1))
-            (define temp-dc (new bitmap-dc% [bitmap temp-bitmap]))
-            
-            (define individual-radii
-              (for/list ([i (in-range num-services)])
-                (define service-name (list-ref services i))
-                (define availability (if (< i (length availabilities))
-                                         (list-ref availabilities i)
-                                         99.0))
-                (define label (string-append service-name "\n" (number->string availability) "%"))
-                (define-values (w h d v) (send temp-dc get-text-extent label))
-                (max 25 (+ (max (/ w 2) (/ h 2)) 10))))
-            
-            ;; Find the maximum radius
-            (define max-radius (apply max individual-radii))
-            
-            ;; Second pass: create nodes with uniform radius
-            (for/list ([i (in-range num-services)])
-              (define angle (* 2 pi (/ i num-services)))
-              (define x (+ center-x (* layout-radius (cos angle))))
-              (define y (+ center-y (* layout-radius (sin angle))))
-              (define service-name (list-ref services i))
-              (define availability (if (< i (length availabilities))
-                                       (list-ref availabilities i)
-                                       99.0))
-              
-              (list x y service-name availability max-radius)))))
+    ;; Calculate positions for nodes in a circular layout
+    (define/private (calculate-node-positions)
+      (define canvas-width (send this get-width))
+      (define canvas-height (send this get-height))
+      (define center-x (+ (/ canvas-width 2) offset-x))
+      (define center-y (+ (/ canvas-height 2) offset-y))
+      (define radius (min (/ canvas-width 3) (/ canvas-height 3)))
+      (define node-count (length services))
+      (define node-radius 30)
+      
+      (for/list ([i (in-range node-count)])
+        (define angle (* 2 pi (/ i node-count)))
+        (define x (+ center-x (* radius (cos angle))))
+        (define y (+ center-y (* radius (sin angle))))
+        (define service-name (list-ref services i))
+        (define availability (list-ref availabilities i))
+        (list x y service-name availability node-radius)))
     
-    ;; Override the on-paint method to draw our graph
-    (define/override (on-paint)
-      (define dc (send this get-dc))
-      
-      ;; Clear the canvas
-      (send dc clear)
-      
-      ;; Debug painting
-      (printf "DEBUG on-paint: services=~a (length=~a)~n" services (length services))
-      (printf "DEBUG on-paint: dependencies=~a (length=~a)~n" dependencies (length dependencies))
-      (printf "DEBUG on-paint: availabilities=~a (length=~a)~n" availabilities (length availabilities))
-      
-      ;; Draw a dramatic background color based on number of services
-      (define bg-color "white")
-      (send dc set-brush bg-color 'solid)
-      (send dc draw-rectangle 0 0 1200 800)
-      
-      ;; Set drawing properties
-      (send dc set-pen "black" 2 'solid)
-      (send dc set-brush "lightblue" 'solid)
-      
-      ;; Calculate node positions
-      (define nodes (calculate-positions services))
-      (printf "DEBUG on-paint: calculated ~a nodes~n" (length nodes))
-      
-      ;; Draw edges first (so they appear behind nodes)
-      (send dc set-pen "black" 2 'solid)
-      (for ([edge dependencies])
-        (when (and (< (first edge) (length nodes))
-                   (< (second edge) (length nodes)))
-          (define from-node (list-ref nodes (first edge)))
-          (define to-node (list-ref nodes (second edge)))
+    ;; Draw arrows between nodes
+    (define/private (draw-arrows dc nodes)
+      (send dc set-pen "gray" 2 'solid)
+      (for ([dep dependencies])
+        (define from-idx (first dep))
+        (define to-idx (second dep))
+        (when (and (< from-idx (length nodes)) (< to-idx (length nodes)))
+          (define from-node (list-ref nodes from-idx))
+          (define to-node (list-ref nodes to-idx))
           (define from-x (first from-node))
           (define from-y (second from-node))
           (define to-x (first to-node))
           (define to-y (second to-node))
+          (define from-radius (fifth from-node))
           (define to-radius (fifth to-node))
           
-          ;; Draw line
-          (send dc draw-line from-x from-y to-x to-y)
-          
-          ;; Draw arrowhead
+          ;; Calculate arrow start and end points on circle edges
           (define dx (- to-x from-x))
           (define dy (- to-y from-y))
-          (define length (sqrt (+ (* dx dx) (* dy dy))))
-          (when (> length 0)
-            (define unit-x (/ dx length))
-            (define unit-y (/ dy length))
-            
-            ;; Arrowhead points
-            (define arrow-length 30)
-            (define arrow-width 10)
-            (define tip-x (- to-x (* unit-x to-radius))) ; Stop before node edge (dynamic radius)
-            (define tip-y (- to-y (* unit-y to-radius)))
-            (define left-x (- tip-x (* unit-x arrow-length) (* unit-y arrow-width)))
-            (define left-y (- tip-y (* unit-y arrow-length) (- (* unit-x arrow-width))))
-            (define right-x (- tip-x (* unit-x arrow-length) (- (* unit-y arrow-width))))
-            (define right-y (- tip-y (* unit-y arrow-length) (* unit-x arrow-width)))
-            
-            (send dc draw-polygon (list (cons tip-x tip-y)
-                                        (cons left-x left-y)
-                                        (cons right-x right-y))))))
+          (define distance (sqrt (+ (* dx dx) (* dy dy))))
+          (define unit-dx (/ dx distance))
+          (define unit-dy (/ dy distance))
+          
+          (define start-x (+ from-x (* unit-dx from-radius)))
+          (define start-y (+ from-y (* unit-dy from-radius)))
+          (define end-x (- to-x (* unit-dx to-radius)))
+          (define end-y (- to-y (* unit-dy to-radius)))
+          
+          ;; Draw arrow line
+          (send dc draw-line start-x start-y end-x end-y)
+          
+          ;; Draw arrowhead
+          (define arrow-size 10)
+          (define arrow-angle (atan dy dx))
+          (define arrow-x1 (+ end-x (* arrow-size (cos (+ arrow-angle pi 0.5)))))
+          (define arrow-y1 (+ end-y (* arrow-size (sin (+ arrow-angle pi 0.5)))))
+          (define arrow-x2 (+ end-x (* arrow-size (cos (- arrow-angle 0.5)))))
+          (define arrow-y2 (+ end-y (* arrow-size (sin (- arrow-angle 0.5)))))
+          
+          (send dc draw-line end-x end-y arrow-x1 arrow-y1)
+          (send dc draw-line end-x end-y arrow-x2 arrow-y2))))
+    
+    ;; Main paint method
+    (define/override (on-paint)
+      (define dc (send this get-dc))
+      (send dc clear)
+      
+      ;; Set drawing properties
+      (send dc set-pen "black" 2 'solid)
+      
+      ;; Calculate node positions
+      (define nodes (calculate-node-positions))
+      
+      ;; Draw arrows first (so they appear behind nodes)
+      (draw-arrows dc nodes)
       
       ;; Draw nodes with different colors for each service
       (for ([node nodes] [i (in-range (length nodes))])
@@ -185,27 +153,19 @@
         
         ;; Draw service name in yellow
         (send dc set-text-foreground "yellow")
-        (define-values (service-w service-h service-d service-v) (send dc get-text-extent service-name))
+        (send dc set-font (make-font #:size 10 #:weight 'bold))
+        (define text-width (send dc get-text-width service-name))
+        (define text-height (send dc get-text-height))
+        (send dc draw-text service-name (- x (/ text-width 2)) (- y (/ text-height 2)))
         
-        ;; Draw availability percentage in red
-        (define availability-text (string-append (number->string availability) "%"))
-        (send dc set-text-foreground "red")
-        (define-values (avail-w avail-h avail-d avail-v) (send dc get-text-extent availability-text))
-        
-        ;; Position text vertically centered with service name above availability
-        (define total-height (+ service-h avail-h 5)) ; 5 pixels spacing between lines
-        (define service-y (- y (/ total-height 2)))
-        (define avail-y (+ service-y service-h 5))
-        
-        ;; Draw service name
-        (send dc set-text-foreground "yellow")
-        (send dc draw-text service-name (- x (/ service-w 2)) service-y)
-        
-        ;; Draw availability
-        (send dc set-text-foreground "red")
-        (send dc draw-text availability-text (- x (/ avail-w 2)) avail-y)))
+        ;; Draw availability percentage below the service name
+        (define avail-text (format "~a%" availability))
+        (send dc set-text-foreground "black")
+        (send dc set-font (make-font #:size 8))
+        (define avail-width (send dc get-text-width avail-text))
+        (send dc draw-text avail-text (- x (/ avail-width 2)) (+ y 5))))
     
-    ;; Mouse event handlers for dragging
+    ;; Handle mouse events for dragging
     (define/override (on-event event)
       (cond
         [(send event button-down? 'left)
@@ -224,55 +184,11 @@
          (send this refresh)])
       (super on-event event))))
 
-;; Function to create graph data from caffeine .cf file
+;; Function to create graph data from caffeine .cf file using ideal IR pattern
 (define (create-graph-from-cf cf-file-path)
-  (printf "DEBUG create-graph-from-cf: parsing file ~a~n" cf-file-path)
-  ;; Force fresh parsing by clearing any potential caches
-  (collect-garbage)
-  
-  ;; Force a completely fresh parse by creating a unique temporary file
-  (define temp-name (format "temp-graph-~a-~a.cf" (current-milliseconds) (random 10000)))
-  (define temp-path (build-path (current-directory) temp-name))
-  
-  ;; Copy file contents to temp file
-  (define file-contents (file->string cf-file-path))
-  (printf "DEBUG create-graph-from-cf: file contents length=~a~n" (string-length file-contents))
-  (with-output-to-file temp-path
-    (lambda () (display file-contents))
-    #:exists 'replace)
-  
-  ;; Parse the temp file
-  (define parsed-data (dynamic-require temp-path 'parsed-data))
-  (printf "DEBUG create-graph-from-cf: parsed-data=~a~n" parsed-data)
-  
-  ;; Clean up
-  (with-handlers ([exn:fail? (lambda (e) (void))])
-    (delete-file temp-path))
-  
-  (define services-data (cdr parsed-data)) ; Skip 'caffeine-program
-  
-  ;; Extract service names, availabilities, and build dependency mapping
-  (define service-names (map cadr services-data))
-  (define availabilities (map caddr services-data))
-  
-  ;; Create service name to index mapping
-  (define name-to-index (make-hash))
-  (for ([name service-names] [i (in-range (length service-names))])
-    (hash-set! name-to-index name i))
-  
-  ;; Build dependencies list as (from-index to-index) pairs
-  (define dependencies
-    (apply append
-           (for/list ([service-data services-data] [from-idx (in-range (length service-names))])
-             (define deps (cadddr service-data))
-             (filter (lambda (x) x)  ; Remove #f values
-               (for/list ([dep deps])
-                 (define to-idx (hash-ref name-to-index dep #f))
-                 (if to-idx
-                     (list from-idx to-idx)
-                     (begin
-                       (printf "DEBUG: Skipping unknown dependency: ~a~n" dep)
-                       #f)))))))
-  
-  (values service-names dependencies availabilities))
+  (printf "DEBUG create-graph-from-cf: using ideal IR pattern for file ~a~n" cf-file-path)
+  ;; Step 1: Load caffeine file to get IR data
+  (define ir-data (load-caffeine-file cf-file-path))
+  ;; Step 2: Process IR data to get structured results
+  (process-ir-data ir-data))
 

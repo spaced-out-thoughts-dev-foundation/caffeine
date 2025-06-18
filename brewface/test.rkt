@@ -2,13 +2,20 @@
 
 (require rackunit rackunit/text-ui)
 (require "graph.rkt")
+(require "../roast/file-loader.rkt")
+(require "../roast/main.rkt")
 
 (define brewface-tests
   (test-suite
    "Brewface Parser Tests"
-   (test-case "Parse caffeine file and extract graph data"
+   (test-case "Parse caffeine file using ideal IR pattern"
+     ;; Step 1: Load IR data
+     (define ir-data (load-caffeine-file "../caffeine/test-example.cf"))
+     (displayln (format "IR Data: ~a" ir-data))
+     
+     ;; Step 2: Process IR data
      (define-values (services dependencies availabilities) 
-       (create-graph-from-cf "../caffeine/test-example.cf"))
+       (process-ir-data ir-data))
      (displayln (format "Services: ~a" services))
      (displayln (format "Dependencies: ~a" dependencies))
      (displayln (format "Availabilities: ~a" availabilities))

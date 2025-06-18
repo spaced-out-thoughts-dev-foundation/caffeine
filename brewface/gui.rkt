@@ -3,6 +3,8 @@
 ;; Brewface GUI - Service Dependency Graph Viewer
 (require "graph.rkt")
 (require "file-watcher.rkt")
+(require "../roast/file-loader.rkt")
+(require "../roast/main.rkt")
 (require racket/date)
 (require net/url)
 (require net/sendurl)
@@ -18,13 +20,16 @@
 (define show-graph-checkbox #f)
 (define show-editor-checkbox #f)
 
-;; Function to parse and process caffeine data
+;; Function to parse and process caffeine data using ideal IR pattern
 (define (process-caffeine-file)
   (if (file-exists? caffeine-file)
       (with-handlers ([exn:fail? (lambda (e) 
                                    (printf "DEBUG: Error in process-caffeine-file: ~a~n" e)
                                    (values '() '() '()))])
-        (create-graph-from-cf (path->string caffeine-file)))
+        ;; Step 1: Load caffeine file to get IR data
+        (define ir-data (load-caffeine-file (path->string caffeine-file)))
+        ;; Step 2: Process IR data to get structured results
+        (process-ir-data ir-data))
       (values '() '() '())))
 
 ;; Function to load file content into editor
