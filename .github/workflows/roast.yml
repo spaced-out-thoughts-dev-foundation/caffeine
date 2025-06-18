@@ -2,17 +2,9 @@ name: Test Roast IR Processing Library
 
 on:
   push:
-    branches: [ main, master ]
-    paths:
-      - 'roast/**'
-      - 'caffeine/**'
-      - '.github/workflows/roast.yml'
+    branches: [ main ]
   pull_request:
-    branches: [ main, master ]
-    paths:
-      - 'roast/**'
-      - 'caffeine/**'
-      - '.github/workflows/roast.yml'
+    branches: [ main ]
 
 jobs:
   test-roast:

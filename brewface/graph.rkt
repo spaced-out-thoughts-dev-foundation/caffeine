@@ -59,15 +59,48 @@
       (set! availabilities new-availabilities)
       (send this refresh))
     
+     
+    
+        ;; Calculate the required node radius based on the largest service name
+    (define/private (calculate-required-node-radius)
+      (define dc (send this get-dc))
+      (define base-radius 35) ; minimum radius
+      
+      ;; Find the largest text dimensions across all services
+      (define max-required-radius
+        (for/fold ([current-max base-radius])
+                  ([service services]
+                   [availability availabilities])
+                     ;; Measure service name
+           (send dc set-font (make-font #:size 12 #:weight 'bold))
+           (define-values (service-width service-height service-desc service-extra) (send dc get-text-extent service))
+           
+           ;; Measure availability text
+           (send dc set-font (make-font #:size 10))
+           (define avail-text (format "~a%" availability))
+           (define-values (avail-width avail-height avail-desc avail-extra) (send dc get-text-extent avail-text))
+          
+          ;; Calculate required radius for this service (smaller relative to text)
+          (define required-width (max service-width avail-width))
+          (define required-height (+ service-height avail-height 10)) ; 10px spacing
+          (define required-radius (+ (max (/ required-width 2.0) (/ required-height 2.0)) 15)) ; tighter padding
+          
+          (max current-max required-radius)))
+      
+      max-required-radius)
+    
     ;; Calculate positions for nodes in a circular layout
     (define/private (calculate-node-positions)
       (define canvas-width (send this get-width))
       (define canvas-height (send this get-height))
       (define center-x (+ (/ canvas-width 2) offset-x))
       (define center-y (+ (/ canvas-height 2) offset-y))
-      (define radius (min (/ canvas-width 3) (/ canvas-height 3)))
       (define node-count (length services))
-      (define node-radius 30)
+      (define node-radius (calculate-required-node-radius))
+      
+      ;; Make nodes MUCH further apart - very large circular layout radius
+      (define max-radius (- (min (/ canvas-width 2) (/ canvas-height 2)) node-radius 50))
+      (define radius (max 250 (min max-radius 400))) ; Between 250 and 400 pixels from center (HUGE spacing)
       
       (for/list ([i (in-range node-count)])
         (define angle (* 2 pi (/ i node-count)))
@@ -75,11 +108,11 @@
         (define y (+ center-y (* radius (sin angle))))
         (define service-name (list-ref services i))
         (define availability (list-ref availabilities i))
+         
         (list x y service-name availability node-radius)))
     
-    ;; Draw arrows between nodes
+        ;; Draw simple, visible arrows between nodes
     (define/private (draw-arrows dc nodes)
-      (send dc set-pen "gray" 2 'solid)
       (for ([dep dependencies])
         (define from-idx (first dep))
         (define to-idx (second dep))
@@ -105,27 +138,50 @@
           (define end-x (- to-x (* unit-dx to-radius)))
           (define end-y (- to-y (* unit-dy to-radius)))
           
-          ;; Draw arrow line
+          ;; Draw thick bright arrow line
+          (send dc set-pen "yellow" 4 'solid)
           (send dc draw-line start-x start-y end-x end-y)
           
-          ;; Draw arrowhead
-          (define arrow-size 10)
+          ;; Draw filled triangular arrowhead
+          (define arrow-length 18)
+          (define arrow-width 12)
           (define arrow-angle (atan dy dx))
-          (define arrow-x1 (+ end-x (* arrow-size (cos (+ arrow-angle pi 0.5)))))
-          (define arrow-y1 (+ end-y (* arrow-size (sin (+ arrow-angle pi 0.5)))))
-          (define arrow-x2 (+ end-x (* arrow-size (cos (- arrow-angle 0.5)))))
-          (define arrow-y2 (+ end-y (* arrow-size (sin (- arrow-angle 0.5)))))
           
-          (send dc draw-line end-x end-y arrow-x1 arrow-y1)
-          (send dc draw-line end-x end-y arrow-x2 arrow-y2))))
+          ;; Calculate arrowhead triangle points
+          (define arrow-tip-x end-x)
+          (define arrow-tip-y end-y)
+          
+          ;; Calculate base of arrow (back from tip)
+          (define arrow-base-x (+ end-x (* arrow-length (cos (+ arrow-angle pi)))))
+          (define arrow-base-y (+ end-y (* arrow-length (sin (+ arrow-angle pi)))))
+          
+          ;; Calculate left and right points of arrow base
+          (define perp-angle (+ arrow-angle (/ pi 2)))
+          (define arrow-left-x (+ arrow-base-x (* (/ arrow-width 2) (cos perp-angle))))
+          (define arrow-left-y (+ arrow-base-y (* (/ arrow-width 2) (sin perp-angle))))
+          (define arrow-right-x (- arrow-base-x (* (/ arrow-width 2) (cos perp-angle))))
+          (define arrow-right-y (- arrow-base-y (* (/ arrow-width 2) (sin perp-angle))))
+          
+          ;; Draw filled arrowhead triangle
+          (send dc set-brush "yellow" 'solid)
+          (send dc set-pen "yellow" 1 'solid)
+          (define arrow-triangle (list (cons arrow-tip-x arrow-tip-y)
+                                       (cons arrow-left-x arrow-left-y)
+                                       (cons arrow-right-x arrow-right-y)))
+          (send dc draw-polygon arrow-triangle))))
     
     ;; Main paint method
     (define/override (on-paint)
       (define dc (send this get-dc))
-      (send dc clear)
       
-      ;; Set drawing properties
-      (send dc set-pen "black" 2 'solid)
+      ;; Get canvas dimensions
+      (define canvas-width (send this get-width))
+      (define canvas-height (send this get-height))
+      
+      ;; Set professional dark background inspired by Zen SRE Studio
+      (send dc set-brush "#2C3E50" 'solid)
+      (send dc set-pen "#2C3E50" 0 'transparent)
+      (send dc draw-rectangle 0 0 canvas-width canvas-height)
       
       ;; Calculate node positions
       (define nodes (calculate-node-positions))
@@ -133,36 +189,32 @@
       ;; Draw arrows first (so they appear behind nodes)
       (draw-arrows dc nodes)
       
-      ;; Draw nodes with different colors for each service
+      ;; Draw nodes with professional color scheme
       (for ([node nodes] [i (in-range (length nodes))])
         (define x (first node))
         (define y (second node))
         (define service-name (third node))
         (define availability (fourth node))
         (define node-radius (fifth node))
-        (define color "lightblue")
-        (define diameter (* node-radius 2))
         
-        ;; Draw circle with unique color (uniform radius) - no border
-        (send dc set-brush color 'solid)
-        (send dc set-pen color 0 'transparent)  ; Remove black border by setting transparent pen
-        (send dc draw-ellipse (- x node-radius) (- y node-radius) diameter diameter)
+                 ;; Draw circle with bright visible colors for debugging
+         (send dc set-brush "blue" 'solid) ; Bright blue nodes
+         (send dc set-pen "white" 3 'solid) ; White border
+         (define diameter (* node-radius 2))
+
+         (send dc draw-ellipse (- x node-radius) (- y node-radius) diameter diameter)
         
-        ;; Reset pen to black for other drawing operations
-        ; (send dc set-pen "black" 2 'solid)
-        
-        ;; Draw service name in yellow
-        (send dc set-text-foreground "yellow")
-        (send dc set-font (make-font #:size 10 #:weight 'bold))
-        (define text-width (send dc get-text-width service-name))
-        (define text-height (send dc get-text-height))
+                 ;; Draw service name in white
+         (send dc set-text-foreground "white")
+         (send dc set-font (make-font #:size 12 #:weight 'bold))
+        (define-values (text-width text-height descent extra-space) (send dc get-text-extent service-name))
         (send dc draw-text service-name (- x (/ text-width 2)) (- y (/ text-height 2)))
         
-        ;; Draw availability percentage below the service name
-        (define avail-text (format "~a%" availability))
-        (send dc set-text-foreground "black")
-        (send dc set-font (make-font #:size 8))
-        (define avail-width (send dc get-text-width avail-text))
+                 ;; Draw availability percentage below the service name
+         (define avail-text (format "~a%" availability))
+         (send dc set-text-foreground "green") ; Green for availability
+         (send dc set-font (make-font #:size 10))
+        (define-values (avail-width avail-height avail-descent avail-extra) (send dc get-text-extent avail-text))
         (send dc draw-text avail-text (- x (/ avail-width 2)) (+ y 5))))
     
     ;; Handle mouse events for dragging

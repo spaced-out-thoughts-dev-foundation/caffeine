@@ -3,4 +3,5 @@
 salad expects 99.95% availability and depends on authentication service.
 veggie sauce expects 99.95% availability and has no dependencies.
 authentication service expects 99% availability and depends on salad and hello and veggie sauce and database.
-database expects 99.999% availability and depends on aws.
+database expects 99.999% availability and depends on aws and salad.
+foo expects 99% availability and depends on database.
