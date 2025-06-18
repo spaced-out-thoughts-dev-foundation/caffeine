@@ -18,21 +18,14 @@
 (printf "✓ Dependencies: ~a\n" dependencies)
 (printf "✓ Availabilities: ~a\n\n" availabilities)
 
-;; Step 3: Generate summary (reusing same IR data)
-(printf "Step 3: Generating service summary...\n")
-(define summary (get-service-summary ir-data))
-(printf "✓ Service count: ~a\n" (hash-ref summary 'service-count))
-(printf "✓ Dependency count: ~a\n" (hash-ref summary 'dependency-count))
-(define metrics (hash-ref summary 'availability-metrics))
-(printf "✓ Average availability: ~a%\n" (hash-ref metrics 'average))
-(printf "✓ Min availability: ~a%\n\n" (hash-ref metrics 'minimum))
+;; Step 3: Demonstrate utility functions
+(printf "Step 3: Using utility functions...\n")
+(define-values (name-to-index index-to-name) (create-service-mapping services))
+(printf "✓ Created service mapping\n")
 
-;; Step 4: Validate IR data (still using same IR data)
-(printf "Step 4: Validating IR data...\n")
-(define validation (validate-ir-data ir-data))
-(printf "✓ Valid: ~a\n" (hash-ref validation 'valid))
-(printf "✓ Error: ~a\n" (hash-ref validation 'error))
-(printf "✓ Invalid dependencies: ~a\n\n" (length (hash-ref validation 'invalid-dependencies)))
+(define-values (valid-deps invalid-deps) (validate-dependencies dependencies services))
+(printf "✓ Valid dependencies: ~a\n" (length valid-deps))
+(printf "✓ Invalid dependencies: ~a\n\n" (length invalid-deps))
 
 (printf "=== Benefits of IR-First Design ===\n")
 (printf "• File was parsed only ONCE\n")

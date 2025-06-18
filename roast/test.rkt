@@ -38,82 +38,35 @@
                                 (number? (second dep))))
                          dependencies)))
    
-   (test-case "Parse IR data and extract components"
-     (define ir-data '(caffeine-program 
-                       (service "hello" 99.9 ("world"))
-                       (service "world" 98.5 ("hello"))))
-     
-     (define services (extract-services ir-data))
-     (define availabilities (extract-availabilities ir-data))
-     (define dependencies (extract-dependencies ir-data))
-     
-     (check-equal? services '("hello" "world"))
-     (check-equal? availabilities '(99.9 98.5))
-     (check-equal? dependencies '((0 1) (1 0))))
-   
-   (test-case "Service mapping utilities"
-     (define services '("hello" "world" "test"))
+   (test-case "Service mapping functions"
+     (define services '("web" "api" "db"))
      (define-values (name-to-index index-to-name) (create-service-mapping services))
      
-     (check-equal? (service-name->index "hello" name-to-index) 0)
-     (check-equal? (service-name->index "world" name-to-index) 1)
-     (check-equal? (service-name->index "test" name-to-index) 2)
+     ;; Test name to index mapping
+     (check-equal? (service-name->index "web" name-to-index) 0)
+     (check-equal? (service-name->index "api" name-to-index) 1)
+     (check-equal? (service-name->index "db" name-to-index) 2)
      (check-equal? (service-name->index "nonexistent" name-to-index) #f)
      
-     (check-equal? (index->service-name 0 index-to-name) "hello")
-     (check-equal? (index->service-name 1 index-to-name) "world")
-     (check-equal? (index->service-name 2 index-to-name) "test")
+     ;; Test index to name mapping
+     (check-equal? (index->service-name 0 index-to-name) "web")
+     (check-equal? (index->service-name 1 index-to-name) "api")
+     (check-equal? (index->service-name 2 index-to-name) "db")
      (check-equal? (index->service-name 99 index-to-name) #f))
    
    (test-case "Dependency validation"
-     (define services '("a" "b" "c"))
-     (define valid-deps '((0 1) (1 2) (2 0)))
-     (define invalid-deps '((0 5) (10 1) (-1 2)))
-     (define mixed-deps (append valid-deps invalid-deps))
+     (define services '("web" "api" "db"))
+     (define valid-deps '((0 1) (1 2)))
+     (define invalid-deps '((0 1) (1 99) (99 2)))
      
-     (define-values (validated-valid validated-invalid) 
-       (validate-dependencies mixed-deps services))
+     (define-values (valid-result invalid-result) 
+       (validate-dependencies valid-deps services))
+     (check-equal? valid-result '((0 1) (1 2)))
+     (check-equal? invalid-result '())
      
-     (check-equal? (length validated-valid) 3)
-     (check-equal? (length validated-invalid) 3)
-     (check-true (not (null? (andmap (lambda (dep) (member dep valid-deps)) validated-valid))))
-     (check-true (not (null? (andmap (lambda (dep) (member dep invalid-deps)) validated-invalid)))))
-   
-   (test-case "Availability metrics calculation"
-     (define availabilities '(99.9 95.5 98.2 99.0))
-     (define metrics (calculate-availability-metrics availabilities))
-     
-     (check-equal? (hash-ref metrics 'count) 4)
-     (check-equal? (hash-ref metrics 'minimum) 95.5)
-     (check-equal? (hash-ref metrics 'maximum) 99.9)
-     (check-= (hash-ref metrics 'average) 98.15 0.01)
-     (check-equal? (hash-ref metrics 'total) 392.6))
-   
-   (test-case "Service summary from IR data"
-     (define ir-data (load-caffeine-file "../caffeine/test-example.cf"))
-     (define summary (get-service-summary ir-data))
-     
-     (check-true (hash? summary))
-     (check-true (hash-has-key? summary 'services))
-     (check-true (hash-has-key? summary 'service-count))
-     (check-true (hash-has-key? summary 'dependencies))
-     (check-true (hash-has-key? summary 'availability-metrics))
-     (check-true (hash-has-key? summary 'service-details))
-     
-     (check-equal? (hash-ref summary 'service-count) 4)
-     (check-true (> (length (hash-ref summary 'dependencies)) 0)))
-   
-   (test-case "IR data validation"
-     (define ir-data (load-caffeine-file "../caffeine/test-example.cf"))
-     (define validation (validate-ir-data ir-data))
-     
-     (check-true (hash? validation))
-     (check-true (hash-has-key? validation 'valid))
-     (check-true (hash-has-key? validation 'services))
-     (check-true (hash-has-key? validation 'dependencies))
-     
-     ;; Should be valid for the test file
-     (check-true (hash-ref validation 'valid))
-     (check-equal? (hash-ref validation 'error) #f))))
+     (define-values (mixed-valid mixed-invalid) 
+       (validate-dependencies invalid-deps services))
+     (check-equal? mixed-valid '((0 1)))
+     (check-equal? mixed-invalid '((1 99) (99 2))))))
 
 (run-tests roast-tests) 

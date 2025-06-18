@@ -3,9 +3,7 @@
 (provide service-name->index
          index->service-name
          create-service-mapping
-         validate-dependencies
-         calculate-availability-metrics
-         format-service-info)
+         validate-dependencies)
 
 ;; Create bidirectional mapping between service names and indices
 (define (create-service-mapping service-names)
@@ -38,32 +36,4 @@
         (set! valid-deps (cons dep valid-deps))
         (set! invalid-deps (cons dep invalid-deps))))
   
-  (values (reverse valid-deps) (reverse invalid-deps)))
-
-;; Calculate basic availability metrics
-(define (calculate-availability-metrics availabilities)
-  (define count (length availabilities))
-  (define total (apply + availabilities))
-  (define average (if (> count 0) (/ total count) 0))
-  (define minimum (if (> count 0) (apply min availabilities) 0))
-  (define maximum (if (> count 0) (apply max availabilities) 0))
-  
-  (hash 'count count
-        'average average
-        'minimum minimum
-        'maximum maximum
-        'total total))
-
-;; Format service information for display
-(define (format-service-info service-names dependencies availabilities)
-  (define-values (name-to-index index-to-name) (create-service-mapping service-names))
-  
-  (for/list ([name service-names] [avail availabilities] [i (in-range (length service-names))])
-    (define service-deps (filter (lambda (dep) (= (first dep) i)) dependencies))
-    (define dep-names (map (lambda (dep) (index->service-name (second dep) index-to-name)) service-deps))
-    
-    (hash 'name name
-          'index i
-          'availability avail
-          'dependencies dep-names
-          'dependency-count (length dep-names)))) 
+  (values (reverse valid-deps) (reverse invalid-deps))) 
