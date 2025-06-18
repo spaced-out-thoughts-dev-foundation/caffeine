@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://zen.sre.studio/public/images/caffeine_icon.png" alt="Caffeine Icon" width="128" height="128">
+  <img src="https://zen.sre.studio/public/images/caffeine_icon.png" alt="Caffeine Icon" width="256" height="256">
 </div>
 
 [![Test Caffeine Language](https://github.com/spaced-out-thoughts-dev-foundation/caffeine/actions/workflows/caffeine.yml/badge.svg)](https://github.com/spaced-out-thoughts-dev-foundation/caffeine/actions/workflows/caffeine.yml)
