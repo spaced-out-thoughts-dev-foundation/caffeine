@@ -119,6 +119,6 @@ jobs:
         
         # Test that brewface can parse a caffeine file
         cd brewface
-        racket -e "(require \"caffeine-parser.rkt\") (define result (parse-caffeine-file \"../caffeine/test-example.cf\")) (printf \"Integration test: ~a services parsed\n\" (length result)) (exit 0)"
+        racket -e "(require \"../roast/file-loader.rkt\") (require \"../roast/main.rkt\") (define ir-data (load-caffeine-file \"../caffeine/test-example.cf\")) (define-values (services deps avails) (process-ir-data ir-data)) (printf \"Integration test: ~a services parsed\\n\" (length services)) (exit 0)"
         
         echo "✅ Integration test passed - brewface successfully uses caffeine DSL!" 

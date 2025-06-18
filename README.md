@@ -2,8 +2,6 @@
   <img src="https://zen.sre.studio/public/images/caffeine_icon.png" alt="Caffeine Icon" width="128" height="128">
 </div>
 
-# caffeine
-
 [![Test Caffeine Language](https://github.com/spaced-out-thoughts-dev-foundation/caffeine/actions/workflows/caffeine.yml/badge.svg)](https://github.com/spaced-out-thoughts-dev-foundation/caffeine/actions/workflows/caffeine.yml)
 
 [![Test Brewface GUI](https://github.com/spaced-out-thoughts-dev-foundation/caffeine/actions/workflows/brewface.yml/badge.svg)](https://github.com/spaced-out-thoughts-dev-foundation/caffeine/actions/workflows/brewface.yml)
