@@ -47,7 +47,64 @@
             (send editor-text change-style zen-style 0 (send editor-text last-position))))
         (begin
           (send editor-text erase)
-          (send editor-text insert "# Example Caffeine file\n# Add your service definitions here\n")
+          (let ([zen-content "# Zen SRE Studio
+
+Research Icon Current research 
+
+About Icon About Us 
+
+Welcome to Zen SRE Studio - your gateway to mindful Site Reliability Engineering practices.
+
+## Current Research
+
+We are exploring innovative approaches to:
+- Mindful incident response and post-mortem practices
+- Zen-inspired monitoring and observability patterns  
+- Contemplative approaches to system design and architecture
+- Stress-free deployment and release management
+- Balanced on-call practices that prioritize engineer wellbeing
+
+## About Us
+
+Zen SRE Studio represents a paradigm shift in how we approach reliability engineering.
+We believe that sustainable, reliable systems emerge from balanced, mindful practices
+rather than reactive, stress-driven methodologies.
+
+Our philosophy centers on:
+- **Mindful Monitoring**: Observing systems with intention and clarity
+- **Compassionate Incident Response**: Handling outages with empathy and learning
+- **Sustainable Practices**: Building reliability that doesn't burn out teams
+- **Contemplative Design**: Creating systems through thoughtful, deliberate choices
+
+Join us in exploring how ancient wisdom traditions can inform modern reliability practices.
+
+# Example Caffeine File
+# You can replace this content with your service definitions
+
+service hello {
+    availability 99.9%
+}
+
+service salad {
+    availability 95.5%
+}
+
+service veggie {
+    availability 98.2%
+}
+
+service authentication_service {
+    availability 99.0%
+}
+
+# Define dependencies
+hello -> salad
+salad -> authentication_service
+authentication_service -> salad  
+authentication_service -> hello
+authentication_service -> veggie
+"])
+            (send editor-text insert zen-content))
           ;; Reapply Zen styling after inserting default content
           (when (and editor-text (send editor-text get-style-list))
             (define style-list (send editor-text get-style-list))
@@ -223,6 +280,27 @@
 ;; Enable basic features
 (send editor-text set-max-undo-history 100)
 (send editor-text auto-wrap #t)
+
+;; Enable standard keyboard shortcuts (copy, paste, cut, undo, redo, select all)
+(define keymap (new keymap%))
+(send keymap add-function "copy" (lambda (text event) (send editor-text copy)))
+(send keymap add-function "paste" (lambda (text event) (send editor-text paste)))
+(send keymap add-function "cut" (lambda (text event) (send editor-text cut)))
+(send keymap add-function "undo" (lambda (text event) (send editor-text undo)))
+(send keymap add-function "redo" (lambda (text event) (send editor-text redo)))
+(send keymap add-function "select-all" (lambda (text event) (send editor-text select-all)))
+
+;; Bind standard hotkeys
+(send keymap map-function "c:c" "copy")      ; Ctrl+C
+(send keymap map-function "c:v" "paste")     ; Ctrl+V  
+(send keymap map-function "c:x" "cut")       ; Ctrl+X
+(send keymap map-function "c:z" "undo")      ; Ctrl+Z
+(send keymap map-function "c:s:z" "redo")    ; Ctrl+Shift+Z (alternative to Ctrl+Y)
+(send keymap map-function "c:y" "redo")      ; Ctrl+Y
+(send keymap map-function "c:a" "select-all") ; Ctrl+A
+
+;; Set the keymap for the editor
+(send editor-text set-keymap keymap)
 
 ;; Create the proper style using Racket's style system
 (define editor-style-list (new style-list%))
