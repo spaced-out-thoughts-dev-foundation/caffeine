@@ -2,7 +2,6 @@
 
 ;; Brewface GUI - Service Dependency Graph Viewer
 (require "graph.rkt")
-(require "caffeine-parser.rkt")
 (require "file-watcher.rkt")
 (require racket/date)
 
@@ -14,93 +13,64 @@
 ;; Function to parse and process caffeine data
 (define (process-caffeine-file)
   (if (file-exists? caffeine-file)
-      (let ([parsed-data #f]
-            [service-names '()]
-            [service-dependencies '()])
-        
-        (with-handlers ([exn:fail? (lambda (e) 
-                                     (set! parsed-data '()))])
-          (set! parsed-data (parse-caffeine-file (path->string caffeine-file))))
-        
-        (set! service-names (get-services parsed-data))
-        (set! service-dependencies (get-dependencies parsed-data))
-        
-        ;; Convert service names to indices for the graph
-        (define (service-name-to-index name)
-          (for/first ([i (in-range (length service-names))]
-                      [svc service-names]
-                      #:when (string=? svc name))
-            i))
-        
-        (define dependency-indices
-          (for/list ([dep service-dependencies])
-            (list (service-name-to-index (first dep))
-                  (service-name-to-index (second dep)))))
-        
-        (define valid-dependencies
-          (filter (lambda (dep) (and (car dep) (cadr dep))) dependency-indices))
-        
-        (values parsed-data service-names valid-dependencies))
+      (with-handlers ([exn:fail? (lambda (e) 
+                                   (printf "DEBUG: Error in process-caffeine-file: ~a~n" e)
+                                   (values '() '() '()))])
+        (create-graph-from-cf (path->string caffeine-file)))
       (values '() '() '())))
 
 ;; Function to update the display
 (define (update-display)
   (with-handlers ([exn:fail? (lambda (e) (void))])
-    (define-values (parsed-data service-names valid-dependencies) (process-caffeine-file))
-    
-    ;; Update the message
-    (when msg
-      (send msg set-label (format "Services: ~a (Updated: ~a)" 
-                                 (length service-names)
-                                 (date->string (current-date) #t))))
+    (define-values (service-names valid-dependencies service-availabilities) (process-caffeine-file))
     
     ;; Update the graph
     (when graph-canvas
-      (send graph-canvas update-graph service-names valid-dependencies))))
+      (send graph-canvas update-graph service-names valid-dependencies service-availabilities))))
 
 ;; File change callback
 (define (on-file-changed filepath)
+  (printf "DEBUG: File changed detected: ~a~n" filepath)
   (thread
     (lambda ()
       (sleep 0.1) ;; Brief delay to ensure file write is complete
       (queue-callback 
         (lambda ()
-          (with-handlers ([exn:fail? (lambda (e) (void))])
+          (printf "DEBUG: Processing file change in queue callback~n")
+          (with-handlers ([exn:fail? (lambda (e) 
+                                       (printf "DEBUG: Error during file change processing: ~a~n" e)
+                                       (void))])
             ;; Parse and update
-            (define-values (parsed-data service-names valid-dependencies) (process-caffeine-file))
-            
-            ;; Update message
-            (when msg
-              (send msg set-label (format "Services: ~a (Updated: ~a)" 
-                                         (length service-names)
-                                         (date->string (current-date) #t))))
+            (printf "DEBUG: About to parse file after change~n")
+            (define-values (service-names valid-dependencies service-availabilities) (process-caffeine-file))
+            (printf "DEBUG: Parsed after file change - services: ~a, deps: ~a, avail: ~a~n" 
+                    service-names valid-dependencies service-availabilities)
             
             ;; Update graph
             (when graph-canvas
-              (send graph-canvas update-graph service-names valid-dependencies))))
+              (printf "DEBUG: Calling update-graph with new data~n")
+              (send graph-canvas update-graph service-names valid-dependencies service-availabilities)
+              (printf "DEBUG: update-graph call completed~n"))))
         #f))))
 
 ;; Initial data processing
-(define-values (parsed-data service-names valid-dependencies) (process-caffeine-file))
+(define-values (service-names valid-dependencies service-availabilities) (process-caffeine-file))
 
 ;; Create UI
 (define frame (new frame% 
                    [label "Brewface - Service Dependency Graph"]
-                   [width 600]
-                   [height 500]))
+                   [width 1200]
+                   [height 800]))
 
 (define panel (new vertical-panel% [parent frame]))
-
-(set! msg (new message% 
-               [parent panel]
-               [label (format "Services: ~a" (length service-names))]))
 
 (set! graph-canvas (new graph-canvas% 
                         [parent panel]
                         [services service-names]
                         [dependencies valid-dependencies]
-                        [min-width 500]
-                        [min-height 400]))
+                        [availabilities service-availabilities]
+                        [min-width 1100]
+                        [min-height 700]))
 
 (define close-button (new button%
                           [parent panel]

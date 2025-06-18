@@ -1,4 +1,6 @@
 #lang caffeine
 
-hello expects 99.9% availability and depends on salad.
-salad expects 99.995% availability and has no dependencies.
+hello expects 99% availability and depends on salad.
+salad expects 99.95% availability and depends on authentication service.
+veggie expects 99.95% availability and has no dependencies.
+authentication service expects 99% availability and depends on salad and hello and veggie.
