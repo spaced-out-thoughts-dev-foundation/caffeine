@@ -15,10 +15,22 @@
 (define msg #f)
 (define editor-text #f)
 (define editor-canvas #f)
-(define graph-panel #f)
-(define editor-panel #f)
 (define show-graph-checkbox #f)
 (define show-editor-checkbox #f)
+(define show-analysis-checkbox #f)
+(define show-metrics-checkbox #f)
+
+;; Dynamic layout containers
+(define quadrant-container #f)
+(define three-panel-container #f)
+(define two-panel-container #f)
+(define single-panel-container #f)
+
+;; Panel content holders
+(define graph-content #f)
+(define editor-content #f)
+(define analysis-content #f)
+(define metrics-content #f)
 
 ;; Function to parse and process caffeine data using ideal IR pattern
 (define (process-caffeine-file)
@@ -177,6 +189,7 @@ authentication_service -> veggie
 (define zen-panel-color (make-color 28 28 28))   ; Slightly lighter panels
 (define zen-accent-color (make-color 0 122 255)) ; Blue accent
 (define zen-text-color (make-color 255 255 255)) ; White text
+(define zen-border-color (make-color 60 60 60))  ; Border color for panel separation
 ;; Black background editor theme
 (define zen-editor-bg (make-color 0 0 0))            ; Pure black background
 (define zen-editor-text (make-color 255 255 255))    ; Pure white text
@@ -195,89 +208,278 @@ authentication_service -> veggie
                         [style '()]
                         [border 0]))
 
-;; Function to update panel visibility
-(define (update-panel-visibility)
-  (define show-graph (send show-graph-checkbox get-value))
-  (define show-editor (send show-editor-checkbox get-value))
-  
-  ;; Remove all panels from the layout first
-  (with-handlers ([exn:fail? (lambda (e) (void))])
-    (send splitter-panel delete-child graph-panel))
-  (with-handlers ([exn:fail? (lambda (e) (void))])
-    (send splitter-panel delete-child separator-panel))
-  (with-handlers ([exn:fail? (lambda (e) (void))])
-    (send splitter-panel delete-child editor-panel))
-  
-  (cond
-    [(and show-graph show-editor)
-     ;; Add both panels back with separator
-     (send splitter-panel add-child graph-panel)
-     (send splitter-panel add-child separator-panel)
-     (send splitter-panel add-child editor-panel)]
-    [show-graph
-     ;; Add only graph panel - it will expand to full width
-     (send splitter-panel add-child graph-panel)]
-    [show-editor
-     ;; Add only editor panel - it will expand to full width
-     (send splitter-panel add-child editor-panel)]
-    [else
-     ;; Don't add any panels back (both hidden)
-     (void)]))
-
-;; Create horizontal splitter for graph and editor
-(define splitter-panel (new horizontal-panel%
+;; Create flexible layout container instead of simple horizontal splitter
+(define main-container (new vertical-panel%
                             [parent main-panel]
                             [stretchable-width #t]
                             [stretchable-height #t]
                             [style '()]))
 
-;; Left side - Graph
-(set! graph-panel (new vertical-panel%
-                       [parent splitter-panel]
-                       [min-width 50]
-                       [stretchable-width #t]
-                       [style '()]))
+;; Function to update panel visibility
+(define (update-panel-visibility)
+  (define show-graph (send show-graph-checkbox get-value))
+  (define show-editor (send show-editor-checkbox get-value))
+  (define show-analysis (send show-analysis-checkbox get-value))
+  (define show-metrics (send show-metrics-checkbox get-value))
+  
+  ;; Count enabled panels
+  (define enabled-panels (+ (if show-graph 1 0)
+                           (if show-editor 1 0)
+                           (if show-analysis 1 0)
+                           (if show-metrics 1 0)))
+  
+  ;; Clear existing layout
+  (when quadrant-container
+    (send main-container delete-child quadrant-container)
+    (set! quadrant-container #f))
+  (when three-panel-container
+    (send main-container delete-child three-panel-container)
+    (set! three-panel-container #f))
+  (when two-panel-container
+    (send main-container delete-child two-panel-container)
+    (set! two-panel-container #f))
+  (when single-panel-container
+    (send main-container delete-child single-panel-container)
+    (set! single-panel-container #f))
+  
+  ;; Create appropriate layout based on panel count
+  (cond
+    ;; 4 panels - quadrant layout
+    [(= enabled-panels 4)
+     (set! quadrant-container (new vertical-panel%
+                                   [parent main-container]
+                                   [stretchable-width #t]
+                                   [stretchable-height #t]
+                                   [style '(border)]
+                                   [border 2]))
+     
+     (define upper-row (new horizontal-panel%
+                           [parent quadrant-container]
+                           [stretchable-width #t]
+                           [stretchable-height #t]
+                           [style '()]
+                           [border 1]))
+     
+     ;; Add horizontal divider between upper and lower rows
+     (define horizontal-divider (new canvas%
+                                    [parent quadrant-container]
+                                    [min-height 3]
+                                    [stretchable-height #f]
+                                    [paint-callback (lambda (canvas dc)
+                                                      (send dc set-brush zen-border-color 'solid)
+                                                      (define-values (w h) (send canvas get-size))
+                                                      (send dc draw-rectangle 0 0 w h))]))
+     
+     (define lower-row (new horizontal-panel%
+                           [parent quadrant-container]
+                           [stretchable-width #t]
+                           [stretchable-height #t]
+                           [style '()]
+                           [border 1]))
+     
+     ;; Create quadrant panels with borders
+     (create-panel-content upper-row "Graph" show-graph graph-canvas #t #f)
+     (create-panel-content upper-row "Editor" show-editor editor-canvas #t #f)
+     (create-panel-content lower-row "Analysis" show-analysis #f #f)
+     (create-panel-content lower-row "Metrics" show-metrics #f #f)]
+    
+    ;; 3 panels - 2 upper, 1 lower expanded
+    [(= enabled-panels 3)
+     (set! three-panel-container (new vertical-panel%
+                                      [parent main-container]
+                                      [stretchable-width #t]
+                                      [stretchable-height #t]
+                                      [style '(border)]
+                                      [border 2]))
+     
+     (define upper-half (new horizontal-panel%
+                            [parent three-panel-container]
+                            [stretchable-width #t]
+                            [stretchable-height #t]
+                            [style '()]
+                            [border 1]))
+     
+     ;; Add horizontal divider
+     (define horizontal-divider-3 (new canvas%
+                                      [parent three-panel-container]
+                                      [min-height 3]
+                                      [stretchable-height #f]
+                                      [paint-callback (lambda (canvas dc)
+                                                        (send dc set-brush zen-border-color 'solid)
+                                                        (define-values (w h) (send canvas get-size))
+                                                        (send dc draw-rectangle 0 0 w h))]))
+     
+     (define lower-half (new horizontal-panel%
+                            [parent three-panel-container]
+                            [stretchable-width #t]
+                            [stretchable-height #t]
+                            [style '()]
+                            [border 1]))
+     
+     ;; Add first two enabled panels to upper, third to lower
+     (define enabled-list (filter (lambda (x) x)
+                                 (list (if show-graph "Graph" #f)
+                                       (if show-editor "Editor" #f)
+                                       (if show-analysis "Analysis" #f)
+                                       (if show-metrics "Metrics" #f))))
+     
+     ;; Helper function to get content for panel
+     (define (get-panel-content title)
+       (cond
+         [(string=? title "Graph") graph-canvas]
+         [(string=? title "Editor") editor-canvas]
+         [else #f]))
+     
+     (create-panel-content upper-half (first enabled-list) #t (get-panel-content (first enabled-list)) #t #f)
+     (create-panel-content upper-half (second enabled-list) #t (get-panel-content (second enabled-list)) #t #f)
+     (create-panel-content lower-half (third enabled-list) #t (get-panel-content (third enabled-list)) #t #f)]
+    
+    ;; 2 panels - side by side
+    [(= enabled-panels 2)
+     (set! two-panel-container (new horizontal-panel%
+                                   [parent main-container]
+                                   [stretchable-width #t]
+                                   [stretchable-height #t]
+                                   [style '(border)]
+                                   [border 2]))
+     
+     (define enabled-list (filter (lambda (x) x)
+                                 (list (if show-graph "Graph" #f)
+                                       (if show-editor "Editor" #f)
+                                       (if show-analysis "Analysis" #f)
+                                       (if show-metrics "Metrics" #f))))
+     
+     ;; Helper function to get content for panel
+     (define (get-panel-content title)
+       (cond
+         [(string=? title "Graph") graph-canvas]
+         [(string=? title "Editor") editor-canvas]
+         [else #f]))
+     
+     (create-panel-content two-panel-container (first enabled-list) #t (get-panel-content (first enabled-list)) #t #f)
+     (create-panel-content two-panel-container (second enabled-list) #t (get-panel-content (second enabled-list)) #t #f)]
+    
+    ;; 1 panel - full screen
+    [(= enabled-panels 1)
+     (set! single-panel-container (new vertical-panel%
+                                      [parent main-container]
+                                      [stretchable-width #t]
+                                      [stretchable-height #t]
+                                      [style '(border)]
+                                      [border 2]))
+     
+     (cond
+       [show-graph (create-panel-content single-panel-container "Graph" #t graph-canvas #t #t)]
+       [show-editor (create-panel-content single-panel-container "Editor" #t editor-canvas #t #t)]
+       [show-analysis (create-panel-content single-panel-container "Analysis" #t #f #t #t)]
+       [show-metrics (create-panel-content single-panel-container "Metrics" #t #f #t #t)])]
+    
+    ;; 0 panels - show nothing
+    [else (void)]))
 
-(define graph-label (new message%
-                         [parent graph-panel]
-                         [label "Service Dependency Graph"]
-                         [font (make-font #:size 14 #:weight 'bold)]))
+;; Helper function to create panel content
+(define (create-panel-content parent title show? content [add-border #f] [fullscreen #f])
+  (when show?
+    (define panel (new vertical-panel%
+                      [parent parent]
+                      [stretchable-width #t]
+                      [stretchable-height #t]
+                      [style (if add-border '(border) '())]
+                      [border (if add-border 1 0)]))
+    
+    ;; Only add title label if not in fullscreen mode
+    (unless fullscreen
+      (new message%
+           [parent panel]
+           [label title]
+           [font (make-font #:size 14 #:weight 'bold)]))
+    
+    (cond
+      [(string=? title "Graph")
+       (when graph-canvas
+         ;; Only reparent if not already a child of this panel
+         (when (not (eq? (send graph-canvas get-parent) panel))
+           (send graph-canvas reparent panel))
+         ;; Ensure graph canvas fills the panel
+         (send graph-canvas stretchable-width #t)
+         (send graph-canvas stretchable-height #t)
+         ;; Make sure it's visible
+         (send graph-canvas show #t))]
+      [(string=? title "Editor")
+       (when editor-canvas
+         ;; Only reparent if not already a child of this panel
+         (when (not (eq? (send editor-canvas get-parent) panel))
+           (send editor-canvas reparent panel))
+         ;; Ensure editor canvas fills the panel
+         (send editor-canvas stretchable-width #t)
+         (send editor-canvas stretchable-height #t)
+         ;; Make sure it's visible
+         (send editor-canvas show #t))
+       ;; Add editor buttons (only if not fullscreen to save space)
+       (when (not fullscreen)
+         (define button-panel (new horizontal-panel%
+                                  [parent panel]
+                                  [stretchable-height #f]
+                                  [min-height 40]))
+         (new button%
+              [parent button-panel]
+              [label "Load File"]
+              [callback (lambda (button event) (load-file-to-editor))])
+         (new button%
+              [parent button-panel]
+              [label "Save File"]
+              [callback (lambda (button event) (save-editor-to-file))])
+         (new button%
+              [parent button-panel]
+              [label "Refresh Graph"]
+              [callback (lambda (button event) (update-display))]))]
+      [else
+       ;; Create placeholder content for Analysis/Metrics
+       (new canvas%
+            [parent panel]
+            [stretchable-width #t]
+            [stretchable-height #t]
+            [paint-callback (lambda (canvas dc)
+                              (define-values (w h) (send canvas get-size))
+                              (send dc set-brush zen-panel-color 'solid)
+                              (send dc draw-rectangle 0 0 w h)
+                              (send dc set-text-foreground zen-text-color)
+                              (send dc set-font (make-font #:size (if fullscreen 24 16) #:weight 'bold))
+                              (define text (if fullscreen 
+                                             (format "~a Panel - Full Screen Mode" title)
+                                             (format "~a Panel - Coming Soon" title)))
+                              (define-values (text-w text-h descent extra-space) (send dc get-text-extent text))
+                              (define x (max 0 (/ (- w text-w) 2)))
+                              (define y (max 0 (/ (- h text-h) 2)))
+                              (send dc draw-text text x y))])])
+    
+    ;; Add vertical divider after panel (except for last panel in row and not in fullscreen)
+    (when (and add-border (not fullscreen) (not (string=? title "Editor")) (not (string=? title "Metrics")))
+      (new canvas%
+           [parent parent]
+           [min-width 3]
+           [stretchable-width #f]
+           [paint-callback (lambda (canvas dc)
+                             (send dc set-brush zen-border-color 'solid)
+                             (define-values (w h) (send canvas get-size))
+                             (send dc draw-rectangle 0 0 w h))]))))
 
+;; Create panels and their content
+
+;; Graph canvas - will be reparented dynamically
 (set! graph-canvas (new graph-canvas% 
-                        [parent graph-panel]
+                        [parent main-container]
                         [services service-names]
                         [dependencies valid-dependencies]
                         [availabilities service-availabilities]
                         [style '()]
-                        [min-width 50]
-                        [min-height 600]))
-
-;; Add separator between graph and editor
-(define separator-panel (new vertical-panel%
-                             [parent splitter-panel]
-                             [min-width 3]
-                             [stretchable-width #f]
-                             [style '()]))
-
-;; Create separator visual element
-(define separator-canvas (new canvas%
-                              [parent separator-panel]
-                              [min-width 3]
-                              [paint-callback (lambda (canvas dc)
-                                                (send dc set-brush (make-color 200 200 200) 'solid)
-                                                (send dc draw-rectangle 0 0 3 800))]))
-
-;; Right side - Text Editor
-(set! editor-panel (new vertical-panel%
-                        [parent splitter-panel]
-                        [min-width 50]
                         [stretchable-width #t]
-                        [style '()]))
+                        [stretchable-height #t]))
 
-(define editor-label (new message%
-                          [parent editor-panel]
-                          [label "Caffeine File Editor"]
-                          [font (make-font #:size 14 #:weight 'bold)]))
+;; Hide the initial canvases so they only appear when properly placed
+(send graph-canvas show #f)
+
+;; Editor setup - will be reparented dynamically
 
 ;; Create text editor with proper styling according to Racket docs
 (set! editor-text (new text%))
@@ -328,36 +530,17 @@ authentication_service -> veggie
 
 ;; Create editor canvas with black background
 (set! editor-canvas (new editor-canvas%
-                         [parent editor-panel]
+                         [parent main-container]
                          [editor editor-text]
-                         [style '()]))
+                         [style '()]
+                         [stretchable-width #t]
+                         [stretchable-height #t]))
 
 ;; Force the canvas background to be black
 (send editor-canvas set-canvas-background zen-editor-bg)
 
-;; Editor button panel
-(define editor-button-panel (new horizontal-panel%
-                                 [parent editor-panel]
-                                 [stretchable-height #f]
-                                 [min-height 40]))
-
-(define load-button (new button%
-                         [parent editor-button-panel]
-                         [label "Load File"]
-                         [callback (lambda (button event)
-                                     (load-file-to-editor))]))
-
-(define save-button (new button%
-                         [parent editor-button-panel]
-                         [label "Save File"]
-                         [callback (lambda (button event)
-                                     (save-editor-to-file))]))
-
-(define refresh-graph-button (new button%
-                                  [parent editor-button-panel]
-                                  [label "Refresh Graph"]
-                                  [callback (lambda (button event)
-                                              (update-display))]))
+;; Hide the initial editor canvas
+(send editor-canvas show #f)
 
 ;; Create panel visibility controls
 (define visibility-panel (new horizontal-panel%
@@ -382,6 +565,20 @@ authentication_service -> veggie
                                 [value #t]
                                 [callback (lambda (checkbox event)
                                             (update-panel-visibility))]))
+
+(set! show-analysis-checkbox (new check-box%
+                                   [parent visibility-panel]
+                                   [label "Analysis"]
+                                   [value #t]
+                                   [callback (lambda (checkbox event)
+                                               (update-panel-visibility))]))
+
+(set! show-metrics-checkbox (new check-box%
+                                   [parent visibility-panel]
+                                   [label "Metrics"]
+                                   [value #t]
+                                   [callback (lambda (checkbox event)
+                                               (update-panel-visibility))]))
 
 ;; Create bottom panel for main buttons
 (define button-panel (new horizontal-panel% 
@@ -419,6 +616,9 @@ authentication_service -> veggie
 
 ;; Start file watching
 (start-file-watcher (path->string caffeine-file) on-file-changed 0.5)
+
+;; Initialize the layout with all panels visible
+(update-panel-visibility)
 
 ;; Show the frame
 (send frame show #t) 
