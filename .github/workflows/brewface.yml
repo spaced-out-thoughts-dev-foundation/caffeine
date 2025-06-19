@@ -121,4 +121,15 @@ jobs:
         cd brewface
         racket -e "(require \"../roast/file-loader.rkt\") (require \"../roast/main.rkt\") (define ir-data (load-caffeine-file \"../caffeine/test-example.cf\")) (define-values (services deps avails) (process-ir-data ir-data)) (printf \"Integration test: ~a services parsed\\n\" (length services)) (exit 0)"
         
-        echo "✅ Integration test passed - brewface successfully uses caffeine DSL!" 
+        echo "✅ Integration test passed - brewface successfully uses caffeine DSL!"
+        
+    - name: Test brewface-OpenSLO integration
+      shell: bash
+      run: |
+        echo "Testing OpenSLO generation integration with brewface GUI components..."
+        
+        # Test that brewface can generate OpenSLO specifications
+        cd brewface
+        racket -e "(require \"../roast/file-loader.rkt\") (require \"../roast/main.rkt\") (define ir-data (load-caffeine-file \"../caffeine/test-example.cf\")) (define openslo-specs (generate-complete-openslo ir-data)) (printf \"Brewface OpenSLO test: generated ~a specifications\\n\" (length openslo-specs)) (exit 0)"
+        
+        echo "✅ Brewface OpenSLO integration test passed - GUI can generate OpenSLO specs!" 

@@ -20,6 +20,7 @@
 (define show-openslo-checkbox #f)
 (define show-ir-checkbox #f)
 (define ir-canvas #f)
+(define openslo-canvas #f)
 (define current-ir-data #f)
 
 ;; Dynamic layout containers
@@ -161,7 +162,11 @@ authentication_service -> veggie
     
     ;; Update the IR display
     (when ir-canvas
-      (send ir-canvas refresh-ir))))
+      (send ir-canvas refresh-ir))
+    
+    ;; Update the OpenSLO display
+    (when openslo-canvas
+      (send openslo-canvas refresh-openslo))))
 
 ;; File change callback
 (define (on-file-changed filepath)
@@ -191,6 +196,11 @@ authentication_service -> veggie
             (when ir-canvas
               (printf "DEBUG: Refreshing IR display~n")
               (send ir-canvas refresh-ir))
+            
+            ;; Update OpenSLO display
+            (when openslo-canvas
+              (printf "DEBUG: Refreshing OpenSLO display~n")
+              (send openslo-canvas refresh-openslo))
             
             ;; Reload editor content if file was changed externally
             (when editor-text
@@ -439,6 +449,75 @@ authentication_service -> veggie
     (define/public (refresh-ir)
       (send this refresh-now))))
 
+;; OpenSLO Display Canvas Class - now using scrollable text editor
+(define openslo-display-canvas%
+  (class vertical-panel%
+    (super-new)
+    
+    ;; Create text editor for OpenSLO content
+    (define openslo-text (new text%))
+    (send openslo-text set-max-undo-history 0) ; Read-only, no undo needed
+    (send openslo-text auto-wrap #f) ; Don't wrap YAML content
+    (send openslo-text lock #t) ; Make it read-only
+    
+    ;; Create style for OpenSLO text
+    (define openslo-style-list (new style-list%))
+    (send openslo-text set-style-list openslo-style-list)
+    
+    ;; Create style delta for OpenSLO theme
+    (define openslo-delta (new style-delta%))
+    (send openslo-delta set-delta-background zen-panel-color)
+    (send openslo-delta set-delta-foreground zen-text-color)
+    (send openslo-delta set-family 'modern)
+    (send openslo-delta set-size-add 0)
+    
+    ;; Create and apply the styled text style
+    (define openslo-style (send openslo-style-list find-or-create-style
+                                (send openslo-style-list basic-style)
+                                openslo-delta))
+    
+    ;; Apply style to all content
+    (send openslo-text change-style openslo-style 0 'end)
+    
+    ;; Create editor canvas with scrollbars
+    (define openslo-editor-canvas (new editor-canvas%
+                                       [parent this]
+                                       [editor openslo-text]
+                                       [style '(no-border auto-vscroll auto-hscroll)]
+                                       [stretchable-width #t]
+                                       [stretchable-height #t]))
+    
+    ;; Set the background color
+    (send openslo-editor-canvas set-canvas-background zen-panel-color)
+    
+    ;; Method to refresh the display
+    (define/public (refresh-openslo)
+      (send openslo-text lock #f) ; Temporarily unlock for editing
+      (send openslo-text erase) ; Clear current content
+      
+      (if current-ir-data
+          (let ([openslo-specs (generate-complete-openslo current-ir-data)])
+            ;; Add header information
+            (send openslo-text insert "# Generated OpenSLO Specifications\n")
+            (send openslo-text insert "# Note: Auto-generated from Caffeine DSL - may need adjustment for actual monitoring setup\n")
+            (send openslo-text insert "# This is a read-only view. Use scroll bars to navigate through the content.\n\n")
+            
+            ;; Add the YAML content
+            (let ([formatted-yaml (format-openslo-yaml openslo-specs)])
+              (send openslo-text insert formatted-yaml)))
+          (begin
+            ;; No data available
+            (send openslo-text insert "# No OpenSLO Data Available\n")
+            (send openslo-text insert "# Load a Caffeine DSL file to generate OpenSLO specifications.\n")))
+      
+      ;; Apply styling to all content
+      (send openslo-text change-style openslo-style 0 'end)
+      (send openslo-text lock #t) ; Lock again for read-only access
+      (send openslo-text set-position 0)) ; Scroll to top
+    
+    ;; Initialize with current data
+    (refresh-openslo)))
+
 ;; Helper function to format IR data for display
 (define (format-ir-data ir-data)
   (if ir-data
@@ -516,8 +595,21 @@ authentication_service -> veggie
          (send ir-canvas stretchable-height #t)
          ;; Make sure it's visible
          (send ir-canvas show #t))]
+      [(string=? title "OpenSLO")
+       ;; Create or reparent OpenSLO canvas
+       (unless openslo-canvas
+         (set! openslo-canvas (new openslo-display-canvas% [parent panel])))
+       (when openslo-canvas
+         ;; Only reparent if not already a child of this panel
+         (when (not (eq? (send openslo-canvas get-parent) panel))
+           (send openslo-canvas reparent panel))
+         ;; Ensure OpenSLO canvas fills the panel
+         (send openslo-canvas stretchable-width #t)
+         (send openslo-canvas stretchable-height #t)
+         ;; Make sure it's visible
+         (send openslo-canvas show #t))]
       [else
-       ;; Create placeholder content for OpenSLO/Intermediate Representation
+       ;; Create placeholder content for unknown panels
        (new canvas%
             [parent panel]
             [stretchable-width #t]

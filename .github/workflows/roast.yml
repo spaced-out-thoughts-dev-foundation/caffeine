@@ -37,6 +37,17 @@ jobs:
         
         echo "✅ Roast IR processing tests passed!"
         
+    - name: Test OpenSLO generator
+      shell: bash
+      run: |
+        echo "Testing OpenSLO generator functionality..."
+        
+        # Test OpenSLO generation from IR data
+        cd roast
+        racket test-openslo.rkt
+        
+        echo "✅ OpenSLO generator tests passed!"
+        
     - name: Test roast example usage
       shell: bash
       run: |
@@ -57,6 +68,17 @@ jobs:
         racket -e "(require \"main.rkt\" \"file-loader.rkt\") (define ir-data (load-caffeine-file \"../caffeine/test-example.cf\")) (define-values (services deps avails) (process-ir-data ir-data)) (printf \"Integration test: ~a services, ~a dependencies processed\n\" (length services) (length deps)) (exit 0)"
         
         echo "✅ Integration test passed - roast successfully processes caffeine IR data!"
+        
+    - name: Test OpenSLO integration
+      shell: bash
+      run: |
+        echo "Testing OpenSLO generation integration with caffeine DSL..."
+        
+        # Test end-to-end OpenSLO generation from caffeine file
+        cd roast
+        racket test-openslo-integration.rkt
+        
+        echo "✅ OpenSLO integration test passed - end-to-end generation working!"
         
     - name: Test roast module separation
       shell: bash
