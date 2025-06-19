@@ -12,7 +12,6 @@
 ;; Global variables
 (define caffeine-file (build-path (current-directory) "example.cf"))
 (define graph-canvas #f)
-(define msg #f)
 (define editor-text #f)
 (define editor-canvas #f)
 (define abstraction-slider #f)
@@ -21,17 +20,8 @@
 (define openslo-canvas #f)
 (define current-ir-data #f)
 
-;; Dynamic layout containers
-(define quadrant-container #f)
-(define three-panel-container #f)
-(define two-panel-container #f)
+;; Dynamic layout container
 (define single-panel-container #f)
-
-;; Panel content holders
-(define graph-content #f)
-(define editor-content #f)
-(define openslo-content #f)
-(define ir-content #f)
 
 ;; Function to parse and process caffeine data using ideal IR pattern
 (define (process-caffeine-file)
@@ -242,15 +232,6 @@ authentication_service -> veggie
 ;; Function to update display layout based on abstraction level
 (define (update-display-layout)
   ;; Clear existing layout
-  (when quadrant-container
-    (send main-container delete-child quadrant-container)
-    (set! quadrant-container #f))
-  (when three-panel-container
-    (send main-container delete-child three-panel-container)
-    (set! three-panel-container #f))
-  (when two-panel-container
-    (send main-container delete-child two-panel-container)
-    (set! two-panel-container #f))
   (when single-panel-container
     (send main-container delete-child single-panel-container)
     (set! single-panel-container #f))
@@ -266,24 +247,24 @@ authentication_service -> veggie
   (cond
     ;; Level 3 - Graph (most abstracted)
     [(= current-abstraction-level 3)
-     (create-panel-content single-panel-container "Graph" #t graph-canvas #t #t)]
+     (create-panel-content single-panel-container "Graph" #t #t #t)]
     
     ;; Level 2 - Editor
     [(= current-abstraction-level 2)
-     (create-panel-content single-panel-container "Editor" #t editor-canvas #t #t)]
+     (create-panel-content single-panel-container "Editor" #t #t #t)]
     
     ;; Level 1 - Intermediate Representation
     [(= current-abstraction-level 1)
-     (create-panel-content single-panel-container "Intermediate Representation" #t #f #t #t)]
+     (create-panel-content single-panel-container "Intermediate Representation" #t #t #t)]
     
     ;; Level 0 - OpenSLO (least abstracted)
     [(= current-abstraction-level 0)
-     (create-panel-content single-panel-container "OpenSLO" #t #f #t #t)]
+     (create-panel-content single-panel-container "OpenSLO" #t #t #t)]
     
     ;; Default to OpenSLO
     [else
      (set! current-abstraction-level 0)
-     (create-panel-content single-panel-container "OpenSLO" #t #f #t #t)]))
+     (create-panel-content single-panel-container "OpenSLO" #t #t #t)]))
 
 ;; IR Display Canvas Class
 (define ir-display-canvas%
@@ -409,7 +390,7 @@ authentication_service -> veggie
       "No data"))
 
 ;; Helper function to create panel content
-(define (create-panel-content parent title show? content [add-border #f] [fullscreen #f])
+(define (create-panel-content parent title show? [add-border #f] [fullscreen #f])
   (when show?
     (define panel (new vertical-panel%
                       [parent parent]
@@ -420,13 +401,14 @@ authentication_service -> veggie
                       [spacing 0]
                       [alignment '(left top)]))
     
-    ;; Add title label for all views
-    (define title-msg (new message%
-                           [parent panel]
-                           [label title]
-                           [font (make-font #:size (if fullscreen 18 14) #:weight 'bold)]
-                           [stretchable-height #f]
-                           [stretchable-width #f]))
+    ;; Add title label for all views except Graph (to maximize graph space)
+    (when (not (string=? title "Graph"))
+      (new message%
+           [parent panel]
+           [label title]
+           [font (make-font #:size (if fullscreen 18 14) #:weight 'bold)]
+           [stretchable-height #f]
+           [stretchable-width #f]))
     
     (cond
       [(string=? title "Graph")
@@ -440,7 +422,22 @@ authentication_service -> veggie
          ;; Make sure it's visible
          (send graph-canvas show #t)
          ;; Force immediate layout refresh for the graph canvas
-         (send panel reflow-container))]
+         (send panel reflow-container)
+         ;; Queue an immediate refresh to ensure proper sizing
+         (queue-callback
+          (lambda ()
+            (send panel reflow-container)
+            (send parent reflow-container)
+            (send graph-canvas refresh-now)
+            ;; Do one more reflow after a tiny delay
+            (queue-callback
+             (lambda ()
+               (send panel reflow-container)
+               (send parent reflow-container)
+               (send main-container reflow-container)
+               (send graph-canvas refresh-now))
+             #f))
+          #f))]
       [(string=? title "Editor")
        (when editor-canvas
          ;; Only reparent if not already a child of this panel
@@ -512,18 +509,7 @@ authentication_service -> veggie
                               (define-values (text-w text-h descent extra-space) (send dc get-text-extent text))
                               (define x (max 0 (/ (- w text-w) 2)))
                               (define y (max 0 (/ (- h text-h) 2)))
-                              (send dc draw-text text x y))])])
-    
-         ;; Add vertical divider after panel (except for last panel in row and not in fullscreen)
-     (when (and add-border (not fullscreen) (not (string=? title "Editor")) (not (string=? title "Intermediate Representation")))
-      (new canvas%
-           [parent parent]
-           [min-width 3]
-           [stretchable-width #f]
-           [paint-callback (lambda (canvas dc)
-                             (send dc set-brush zen-border-color 'solid)
-                             (define-values (w h) (send canvas get-size))
-                             (send dc draw-rectangle 0 0 w h))]))))
+                              (send dc draw-text text x y))])])))
 
 ;; Create panels and their content
 
@@ -535,7 +521,9 @@ authentication_service -> veggie
                         [availabilities service-availabilities]
                         [style '()]
                         [stretchable-width #t]
-                        [stretchable-height #t]))
+                        [stretchable-height #t]
+                        [min-width 800]
+                        [min-height 600]))
 
 ;; Hide the initial canvases so they only appear when properly placed
 (send graph-canvas show #f)
@@ -764,20 +752,12 @@ authentication_service -> veggie
 ;; Initialize the layout with the default abstraction level
 (update-display-layout)
 
-;; Show the frame
-(send frame show #t)
+;; Do the layout fix BEFORE showing the frame to minimize visual glitch
+;; Simulate changing to a different view and back to graph
+(set! current-abstraction-level 2) ; Switch to Editor
+(update-display-layout)
+(set! current-abstraction-level 3) ; Switch back to Graph
+(update-display-layout)
 
-;; Schedule multiple delayed layout refreshes to ensure proper initial sizing
-(queue-callback
- (lambda ()
-   (update-display-layout)
-   ;; Force container reflow after layout update
-   (send main-container reflow-container)
-   ;; Schedule another refresh to ensure everything is properly sized
-   (queue-callback
-    (lambda ()
-      (update-display-layout)
-      (when graph-canvas
-        (send graph-canvas refresh-now)))
-    #f))
- #f) 
+;; Now show the frame after layout is fixed
+(send frame show #t) 
