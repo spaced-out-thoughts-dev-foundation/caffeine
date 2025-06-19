@@ -17,8 +17,10 @@
 (define editor-canvas #f)
 (define show-graph-checkbox #f)
 (define show-editor-checkbox #f)
-(define show-analysis-checkbox #f)
-(define show-metrics-checkbox #f)
+(define show-openslo-checkbox #f)
+(define show-ir-checkbox #f)
+(define ir-canvas #f)
+(define current-ir-data #f)
 
 ;; Dynamic layout containers
 (define quadrant-container #f)
@@ -29,20 +31,25 @@
 ;; Panel content holders
 (define graph-content #f)
 (define editor-content #f)
-(define analysis-content #f)
-(define metrics-content #f)
+(define openslo-content #f)
+(define ir-content #f)
 
 ;; Function to parse and process caffeine data using ideal IR pattern
 (define (process-caffeine-file)
   (if (file-exists? caffeine-file)
       (with-handlers ([exn:fail? (lambda (e) 
                                    (printf "DEBUG: Error in process-caffeine-file: ~a~n" e)
+                                   (set! current-ir-data #f)
                                    (values '() '() '()))])
         ;; Step 1: Load caffeine file to get IR data
         (define ir-data (load-caffeine-file (path->string caffeine-file)))
+        ;; Store IR data globally for IR panel display
+        (set! current-ir-data ir-data)
         ;; Step 2: Process IR data to get structured results
         (process-ir-data ir-data))
-      (values '() '() '())))
+      (begin
+        (set! current-ir-data #f)
+        (values '() '() '()))))
 
 ;; Function to load file content into editor
 (define (load-file-to-editor)
@@ -150,7 +157,11 @@ authentication_service -> veggie
     
     ;; Update the graph
     (when graph-canvas
-      (send graph-canvas update-graph service-names valid-dependencies service-availabilities))))
+      (send graph-canvas update-graph service-names valid-dependencies service-availabilities))
+    
+    ;; Update the IR display
+    (when ir-canvas
+      (send ir-canvas refresh-ir))))
 
 ;; File change callback
 (define (on-file-changed filepath)
@@ -175,6 +186,11 @@ authentication_service -> veggie
               (printf "DEBUG: Calling update-graph with new data~n")
               (send graph-canvas update-graph service-names valid-dependencies service-availabilities)
               (printf "DEBUG: update-graph call completed~n"))
+            
+            ;; Update IR display
+            (when ir-canvas
+              (printf "DEBUG: Refreshing IR display~n")
+              (send ir-canvas refresh-ir))
             
             ;; Reload editor content if file was changed externally
             (when editor-text
@@ -219,14 +235,14 @@ authentication_service -> veggie
 (define (update-panel-visibility)
   (define show-graph (send show-graph-checkbox get-value))
   (define show-editor (send show-editor-checkbox get-value))
-  (define show-analysis (send show-analysis-checkbox get-value))
-  (define show-metrics (send show-metrics-checkbox get-value))
+  (define show-openslo (send show-openslo-checkbox get-value))
+  (define show-ir (send show-ir-checkbox get-value))
   
   ;; Count enabled panels
   (define enabled-panels (+ (if show-graph 1 0)
                            (if show-editor 1 0)
-                           (if show-analysis 1 0)
-                           (if show-metrics 1 0)))
+                           (if show-openslo 1 0)
+                           (if show-ir 1 0)))
   
   ;; Clear existing layout
   (when quadrant-container
@@ -280,8 +296,8 @@ authentication_service -> veggie
      ;; Create quadrant panels with borders
      (create-panel-content upper-row "Graph" show-graph graph-canvas #t #f)
      (create-panel-content upper-row "Editor" show-editor editor-canvas #t #f)
-     (create-panel-content lower-row "Analysis" show-analysis #f #f)
-     (create-panel-content lower-row "Metrics" show-metrics #f #f)]
+     (create-panel-content lower-row "OpenSLO" show-openslo #f #t #f)
+     (create-panel-content lower-row "Intermediate Representation" show-ir #f #t #f)]
     
     ;; 3 panels - 2 upper, 1 lower expanded
     [(= enabled-panels 3)
@@ -320,8 +336,8 @@ authentication_service -> veggie
      (define enabled-list (filter (lambda (x) x)
                                  (list (if show-graph "Graph" #f)
                                        (if show-editor "Editor" #f)
-                                       (if show-analysis "Analysis" #f)
-                                       (if show-metrics "Metrics" #f))))
+                                       (if show-openslo "OpenSLO" #f)
+                                       (if show-ir "Intermediate Representation" #f))))
      
      ;; Helper function to get content for panel
      (define (get-panel-content title)
@@ -346,8 +362,8 @@ authentication_service -> veggie
      (define enabled-list (filter (lambda (x) x)
                                  (list (if show-graph "Graph" #f)
                                        (if show-editor "Editor" #f)
-                                       (if show-analysis "Analysis" #f)
-                                       (if show-metrics "Metrics" #f))))
+                                       (if show-openslo "OpenSLO" #f)
+                                       (if show-ir "Intermediate Representation" #f))))
      
      ;; Helper function to get content for panel
      (define (get-panel-content title)
@@ -371,11 +387,65 @@ authentication_service -> veggie
      (cond
        [show-graph (create-panel-content single-panel-container "Graph" #t graph-canvas #t #t)]
        [show-editor (create-panel-content single-panel-container "Editor" #t editor-canvas #t #t)]
-       [show-analysis (create-panel-content single-panel-container "Analysis" #t #f #t #t)]
-       [show-metrics (create-panel-content single-panel-container "Metrics" #t #f #t #t)])]
+       [show-openslo (create-panel-content single-panel-container "OpenSLO" #t #f #t #t)]
+       [show-ir (create-panel-content single-panel-container "Intermediate Representation" #t #f #t #t)])]
     
     ;; 0 panels - show nothing
     [else (void)]))
+
+;; IR Display Canvas Class
+(define ir-display-canvas%
+  (class canvas%
+    (super-new)
+    
+    ;; Override paint callback to display IR data
+    (define/override (on-paint)
+      (define dc (send this get-dc))
+      (define-values (w h) (send this get-size))
+      
+      ;; Clear background
+      (send dc set-brush zen-panel-color 'solid)
+      (send dc draw-rectangle 0 0 w h)
+      
+      ;; Set text properties
+      (send dc set-text-foreground zen-text-color)
+      (send dc set-font (make-font #:size 12 #:family 'modern))
+      
+      (if current-ir-data
+          (let ([line-height 16]
+                [margin 10])
+            ;; Display title
+            (send dc set-font (make-font #:size 14 #:weight 'bold))
+            (send dc draw-text "Roast Intermediate Representation" margin margin)
+            
+            ;; Display IR data
+            (send dc set-font (make-font #:size 12 #:family 'modern))
+            (let ([start-y (+ margin 30)]
+                  [formatted-ir (format-ir-data current-ir-data)])
+              (let ([formatted-lines (string-split formatted-ir "\n")])
+                (for ([line formatted-lines] [i (in-range (length formatted-lines))])
+                  (let ([y (+ start-y (* i line-height))])
+                    (when (< y (- h 20)) ; Don't draw beyond canvas bounds
+                      (send dc draw-text line margin y)))))))
+          (let ([text "No IR Data Available"])
+            ;; No data available
+            (send dc set-font (make-font #:size 16 #:weight 'bold))
+            (let-values ([(text-w text-h descent extra-space) (send dc get-text-extent text)])
+              (let ([x (max 0 (/ (- w text-w) 2))]
+                    [y (max 0 (/ (- h text-h) 2))])
+                (send dc draw-text text x y))))))
+    
+    ;; Method to refresh the display
+    (define/public (refresh-ir)
+      (send this refresh-now))))
+
+;; Helper function to format IR data for display
+(define (format-ir-data ir-data)
+  (if ir-data
+      (with-output-to-string
+        (lambda ()
+          (pretty-print ir-data)))
+      "No data"))
 
 ;; Helper function to create panel content
 (define (create-panel-content parent title show? content [add-border #f] [fullscreen #f])
@@ -433,8 +503,21 @@ authentication_service -> veggie
               [parent button-panel]
               [label "Refresh Graph"]
               [callback (lambda (button event) (update-display))]))]
+      [(string=? title "Intermediate Representation")
+       ;; Create or reparent IR canvas
+       (unless ir-canvas
+         (set! ir-canvas (new ir-display-canvas% [parent panel])))
+       (when ir-canvas
+         ;; Only reparent if not already a child of this panel
+         (when (not (eq? (send ir-canvas get-parent) panel))
+           (send ir-canvas reparent panel))
+         ;; Ensure IR canvas fills the panel
+         (send ir-canvas stretchable-width #t)
+         (send ir-canvas stretchable-height #t)
+         ;; Make sure it's visible
+         (send ir-canvas show #t))]
       [else
-       ;; Create placeholder content for Analysis/Metrics
+       ;; Create placeholder content for OpenSLO/Intermediate Representation
        (new canvas%
             [parent panel]
             [stretchable-width #t]
@@ -453,8 +536,8 @@ authentication_service -> veggie
                               (define y (max 0 (/ (- h text-h) 2)))
                               (send dc draw-text text x y))])])
     
-    ;; Add vertical divider after panel (except for last panel in row and not in fullscreen)
-    (when (and add-border (not fullscreen) (not (string=? title "Editor")) (not (string=? title "Metrics")))
+         ;; Add vertical divider after panel (except for last panel in row and not in fullscreen)
+     (when (and add-border (not fullscreen) (not (string=? title "Editor")) (not (string=? title "Intermediate Representation")))
       (new canvas%
            [parent parent]
            [min-width 3]
@@ -566,19 +649,19 @@ authentication_service -> veggie
                                 [callback (lambda (checkbox event)
                                             (update-panel-visibility))]))
 
-(set! show-analysis-checkbox (new check-box%
-                                   [parent visibility-panel]
-                                   [label "Analysis"]
-                                   [value #t]
-                                   [callback (lambda (checkbox event)
-                                               (update-panel-visibility))]))
+(set! show-openslo-checkbox (new check-box%
+                                     [parent visibility-panel]
+                                     [label "OpenSLO"]
+                                     [value #t]
+                                     [callback (lambda (checkbox event)
+                                                 (update-panel-visibility))]))
 
-(set! show-metrics-checkbox (new check-box%
-                                   [parent visibility-panel]
-                                   [label "Metrics"]
-                                   [value #t]
-                                   [callback (lambda (checkbox event)
-                                               (update-panel-visibility))]))
+(set! show-ir-checkbox (new check-box%
+                        [parent visibility-panel]
+                        [label "Intermediate Representation"]
+                        [value #t]
+                        [callback (lambda (checkbox event)
+                                    (update-panel-visibility))]))
 
 ;; Create bottom panel for main buttons
 (define button-panel (new horizontal-panel% 
