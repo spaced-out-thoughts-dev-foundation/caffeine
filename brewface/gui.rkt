@@ -15,10 +15,8 @@
 (define msg #f)
 (define editor-text #f)
 (define editor-canvas #f)
-(define show-graph-checkbox #f)
-(define show-editor-checkbox #f)
-(define show-openslo-checkbox #f)
-(define show-ir-checkbox #f)
+(define abstraction-slider #f)
+(define current-abstraction-level 3) ; 0=Graph, 1=Editor, 2=IR, 3=OpenSLO
 (define ir-canvas #f)
 (define openslo-canvas #f)
 (define current-ir-data #f)
@@ -241,19 +239,8 @@ authentication_service -> veggie
                             [stretchable-height #t]
                             [style '()]))
 
-;; Function to update panel visibility
-(define (update-panel-visibility)
-  (define show-graph (send show-graph-checkbox get-value))
-  (define show-editor (send show-editor-checkbox get-value))
-  (define show-openslo (send show-openslo-checkbox get-value))
-  (define show-ir (send show-ir-checkbox get-value))
-  
-  ;; Count enabled panels
-  (define enabled-panels (+ (if show-graph 1 0)
-                           (if show-editor 1 0)
-                           (if show-openslo 1 0)
-                           (if show-ir 1 0)))
-  
+;; Function to update display layout based on abstraction level
+(define (update-display-layout)
   ;; Clear existing layout
   (when quadrant-container
     (send main-container delete-child quadrant-container)
@@ -268,140 +255,35 @@ authentication_service -> veggie
     (send main-container delete-child single-panel-container)
     (set! single-panel-container #f))
   
-  ;; Create appropriate layout based on panel count
+  ;; Create single full-screen panel based on abstraction level
+  (set! single-panel-container (new vertical-panel%
+                                   [parent main-container]
+                                   [stretchable-width #t]
+                                   [stretchable-height #t]
+                                   [style '(border)]
+                                   [border 2]))
+  
   (cond
-    ;; 4 panels - quadrant layout
-    [(= enabled-panels 4)
-     (set! quadrant-container (new vertical-panel%
-                                   [parent main-container]
-                                   [stretchable-width #t]
-                                   [stretchable-height #t]
-                                   [style '(border)]
-                                   [border 2]))
-     
-     (define upper-row (new horizontal-panel%
-                           [parent quadrant-container]
-                           [stretchable-width #t]
-                           [stretchable-height #t]
-                           [style '()]
-                           [border 1]))
-     
-     ;; Add horizontal divider between upper and lower rows
-     (define horizontal-divider (new canvas%
-                                    [parent quadrant-container]
-                                    [min-height 3]
-                                    [stretchable-height #f]
-                                    [paint-callback (lambda (canvas dc)
-                                                      (send dc set-brush zen-border-color 'solid)
-                                                      (define-values (w h) (send canvas get-size))
-                                                      (send dc draw-rectangle 0 0 w h))]))
-     
-     (define lower-row (new horizontal-panel%
-                           [parent quadrant-container]
-                           [stretchable-width #t]
-                           [stretchable-height #t]
-                           [style '()]
-                           [border 1]))
-     
-     ;; Create quadrant panels with borders
-     (create-panel-content upper-row "Graph" show-graph graph-canvas #t #f)
-     (create-panel-content upper-row "Editor" show-editor editor-canvas #t #f)
-     (create-panel-content lower-row "OpenSLO" show-openslo #f #t #f)
-     (create-panel-content lower-row "Intermediate Representation" show-ir #f #t #f)]
+    ;; Level 3 - Graph (most abstracted)
+    [(= current-abstraction-level 3)
+     (create-panel-content single-panel-container "Graph" #t graph-canvas #t #t)]
     
-    ;; 3 panels - 2 upper, 1 lower expanded
-    [(= enabled-panels 3)
-     (set! three-panel-container (new vertical-panel%
-                                      [parent main-container]
-                                      [stretchable-width #t]
-                                      [stretchable-height #t]
-                                      [style '(border)]
-                                      [border 2]))
-     
-     (define upper-half (new horizontal-panel%
-                            [parent three-panel-container]
-                            [stretchable-width #t]
-                            [stretchable-height #t]
-                            [style '()]
-                            [border 1]))
-     
-     ;; Add horizontal divider
-     (define horizontal-divider-3 (new canvas%
-                                      [parent three-panel-container]
-                                      [min-height 3]
-                                      [stretchable-height #f]
-                                      [paint-callback (lambda (canvas dc)
-                                                        (send dc set-brush zen-border-color 'solid)
-                                                        (define-values (w h) (send canvas get-size))
-                                                        (send dc draw-rectangle 0 0 w h))]))
-     
-     (define lower-half (new horizontal-panel%
-                            [parent three-panel-container]
-                            [stretchable-width #t]
-                            [stretchable-height #t]
-                            [style '()]
-                            [border 1]))
-     
-     ;; Add first two enabled panels to upper, third to lower
-     (define enabled-list (filter (lambda (x) x)
-                                 (list (if show-graph "Graph" #f)
-                                       (if show-editor "Editor" #f)
-                                       (if show-openslo "OpenSLO" #f)
-                                       (if show-ir "Intermediate Representation" #f))))
-     
-     ;; Helper function to get content for panel
-     (define (get-panel-content title)
-       (cond
-         [(string=? title "Graph") graph-canvas]
-         [(string=? title "Editor") editor-canvas]
-         [else #f]))
-     
-     (create-panel-content upper-half (first enabled-list) #t (get-panel-content (first enabled-list)) #t #f)
-     (create-panel-content upper-half (second enabled-list) #t (get-panel-content (second enabled-list)) #t #f)
-     (create-panel-content lower-half (third enabled-list) #t (get-panel-content (third enabled-list)) #t #f)]
+    ;; Level 2 - Editor
+    [(= current-abstraction-level 2)
+     (create-panel-content single-panel-container "Editor" #t editor-canvas #t #t)]
     
-    ;; 2 panels - side by side
-    [(= enabled-panels 2)
-     (set! two-panel-container (new horizontal-panel%
-                                   [parent main-container]
-                                   [stretchable-width #t]
-                                   [stretchable-height #t]
-                                   [style '(border)]
-                                   [border 2]))
-     
-     (define enabled-list (filter (lambda (x) x)
-                                 (list (if show-graph "Graph" #f)
-                                       (if show-editor "Editor" #f)
-                                       (if show-openslo "OpenSLO" #f)
-                                       (if show-ir "Intermediate Representation" #f))))
-     
-     ;; Helper function to get content for panel
-     (define (get-panel-content title)
-       (cond
-         [(string=? title "Graph") graph-canvas]
-         [(string=? title "Editor") editor-canvas]
-         [else #f]))
-     
-     (create-panel-content two-panel-container (first enabled-list) #t (get-panel-content (first enabled-list)) #t #f)
-     (create-panel-content two-panel-container (second enabled-list) #t (get-panel-content (second enabled-list)) #t #f)]
+    ;; Level 1 - Intermediate Representation
+    [(= current-abstraction-level 1)
+     (create-panel-content single-panel-container "Intermediate Representation" #t #f #t #t)]
     
-    ;; 1 panel - full screen
-    [(= enabled-panels 1)
-     (set! single-panel-container (new vertical-panel%
-                                      [parent main-container]
-                                      [stretchable-width #t]
-                                      [stretchable-height #t]
-                                      [style '(border)]
-                                      [border 2]))
-     
-     (cond
-       [show-graph (create-panel-content single-panel-container "Graph" #t graph-canvas #t #t)]
-       [show-editor (create-panel-content single-panel-container "Editor" #t editor-canvas #t #t)]
-       [show-openslo (create-panel-content single-panel-container "OpenSLO" #t #f #t #t)]
-       [show-ir (create-panel-content single-panel-container "Intermediate Representation" #t #f #t #t)])]
+    ;; Level 0 - OpenSLO (least abstracted)
+    [(= current-abstraction-level 0)
+     (create-panel-content single-panel-container "OpenSLO" #t #f #t #t)]
     
-    ;; 0 panels - show nothing
-    [else (void)]))
+    ;; Default to OpenSLO
+    [else
+     (set! current-abstraction-level 0)
+     (create-panel-content single-panel-container "OpenSLO" #t #f #t #t)]))
 
 ;; IR Display Canvas Class
 (define ir-display-canvas%
@@ -534,14 +416,17 @@ authentication_service -> veggie
                       [stretchable-width #t]
                       [stretchable-height #t]
                       [style (if add-border '(border) '())]
-                      [border (if add-border 1 0)]))
+                      [border (if add-border 1 0)]
+                      [spacing 0]
+                      [alignment '(left top)]))
     
-    ;; Only add title label if not in fullscreen mode
-    (unless fullscreen
-      (new message%
-           [parent panel]
-           [label title]
-           [font (make-font #:size 14 #:weight 'bold)]))
+    ;; Add title label for all views
+    (define title-msg (new message%
+                           [parent panel]
+                           [label title]
+                           [font (make-font #:size (if fullscreen 18 14) #:weight 'bold)]
+                           [stretchable-height #f]
+                           [stretchable-width #f]))
     
     (cond
       [(string=? title "Graph")
@@ -553,7 +438,9 @@ authentication_service -> veggie
          (send graph-canvas stretchable-width #t)
          (send graph-canvas stretchable-height #t)
          ;; Make sure it's visible
-         (send graph-canvas show #t))]
+         (send graph-canvas show #t)
+         ;; Force immediate layout refresh for the graph canvas
+         (send panel reflow-container))]
       [(string=? title "Editor")
        (when editor-canvas
          ;; Only reparent if not already a child of this panel
@@ -564,24 +451,23 @@ authentication_service -> veggie
          (send editor-canvas stretchable-height #t)
          ;; Make sure it's visible
          (send editor-canvas show #t))
-       ;; Add editor buttons (only if not fullscreen to save space)
-       (when (not fullscreen)
-         (define button-panel (new horizontal-panel%
-                                  [parent panel]
-                                  [stretchable-height #f]
-                                  [min-height 40]))
-         (new button%
-              [parent button-panel]
-              [label "Load File"]
-              [callback (lambda (button event) (load-file-to-editor))])
-         (new button%
-              [parent button-panel]
-              [label "Save File"]
-              [callback (lambda (button event) (save-editor-to-file))])
-         (new button%
-              [parent button-panel]
-              [label "Refresh Graph"]
-              [callback (lambda (button event) (update-display))]))]
+       ;; Add editor buttons for all modes
+       (define button-panel (new horizontal-panel%
+                                [parent panel]
+                                [stretchable-height #f]
+                                [min-height 40]))
+       (new button%
+            [parent button-panel]
+            [label "Load File"]
+            [callback (lambda (button event) (load-file-to-editor))])
+       (new button%
+            [parent button-panel]
+            [label "Save File"]
+            [callback (lambda (button event) (save-editor-to-file))])
+       (new button%
+            [parent button-panel]
+            [label "Refresh Graph"]
+            [callback (lambda (button event) (update-display))])]
       [(string=? title "Intermediate Representation")
        ;; Create or reparent IR canvas
        (unless ir-canvas
@@ -717,43 +603,126 @@ authentication_service -> veggie
 ;; Hide the initial editor canvas
 (send editor-canvas show #f)
 
-;; Create panel visibility controls
-(define visibility-panel (new horizontal-panel%
-                              [parent main-panel]
+;; Create abstraction slider control
+(define abstraction-panel (new vertical-panel%
+                               [parent main-panel]
+                               [stretchable-height #f]
+                               [min-height 60]
+                               [border 5]))
+
+(define slider-container (new vertical-panel%
+                              [parent abstraction-panel]
                               [stretchable-height #f]
-                              [min-height 30]))
+                              [alignment '(center center)]
+                              [spacing 10]))
 
-(define visibility-label (new message%
-                              [parent visibility-panel]
-                              [label "Show Panels: "]))
+;; Add centered label above slider
+(define abstraction-label (new message%
+                               [parent slider-container]
+                               [label "Abstraction Level"]
+                               [font (make-font #:size 16 #:weight 'normal)]))
 
-(set! show-graph-checkbox (new check-box%
-                               [parent visibility-panel]
-                               [label "Graph"]
-                               [value #t]
-                               [callback (lambda (checkbox event)
-                                           (update-panel-visibility))]))
+(define slider-row (new horizontal-panel%
+                        [parent slider-container]
+                        [stretchable-height #f]
+                        [alignment '(center center)]))
 
-(set! show-editor-checkbox (new check-box%
-                                [parent visibility-panel]
-                                [label "Editor"]
-                                [value #t]
-                                [callback (lambda (checkbox event)
-                                            (update-panel-visibility))]))
+;; Create custom blue slider with 4 positions (0-3) - no number display
+(define blue-slider-canvas%
+  (class canvas%
+    (super-new)
+    (init-field [min-val 0] [max-val 3] [init-val 0] [on-change (lambda (val) (void))])
+    
+    (define current-value init-val)
+    (define slider-width 300)
+    (define slider-height 20)
+    (define handle-size 16)
+    (define dragging #f)
+    
+    (define/public (get-value) current-value)
+    (define/public (set-value val)
+      (set! current-value (max min-val (min max-val val)))
+      (send this refresh-now))
+    
+    (define/override (on-paint)
+      (define dc (send this get-dc))
+      (define-values (w h) (send this get-size))
+      
+      ;; Clear background
+      (send dc set-brush zen-panel-color 'solid)
+      (send dc draw-rectangle 0 0 w h)
+      
+      ;; Calculate positions
+      (define track-y (/ h 2))
+      (define track-left 20)
+      (define track-right (- w 20))
+      (define track-width (- track-right track-left))
+      (define handle-x (+ track-left (* (/ current-value (- max-val min-val)) track-width)))
+      
+      ;; Draw track background (gray)
+      (send dc set-pen zen-border-color 2 'solid)
+      (send dc draw-line track-left track-y track-right track-y)
+      
+      ;; Draw blue fill from left to handle position (standard slider behavior)
+      (send dc set-pen zen-accent-color 4 'solid)
+      (send dc draw-line track-left track-y handle-x track-y)
+      
+      ;; Draw handle
+      (send dc set-brush zen-accent-color 'solid)
+      (send dc set-pen zen-accent-color 1 'solid)
+      (send dc draw-ellipse (- handle-x (/ handle-size 2)) (- track-y (/ handle-size 2)) handle-size handle-size))
+    
+    (define/override (on-event event)
+      (define-values (w h) (send this get-size))
+      (define track-left 20)
+      (define track-right (- w 20))
+      (define track-width (- track-right track-left))
+      
+      (cond
+        [(send event button-down? 'left)
+         (set! dragging #t)
+         (define x (send event get-x))
+         (define new-val (round (* (/ (- x track-left) track-width) (- max-val min-val))))
+         (set! current-value (max min-val (min max-val new-val)))
+         (on-change current-value)
+         (send this refresh-now)]
+        [(and dragging (send event dragging?))
+         (define x (send event get-x))
+         (define new-val (round (* (/ (- x track-left) track-width) (- max-val min-val))))
+         (set! current-value (max min-val (min max-val new-val)))
+         (on-change current-value)
+         (send this refresh-now)]
+        [(send event button-up? 'left)
+         (set! dragging #f)]))))
 
-(set! show-openslo-checkbox (new check-box%
-                                     [parent visibility-panel]
-                                     [label "OpenSLO"]
-                                     [value #t]
-                                     [callback (lambda (checkbox event)
-                                                 (update-panel-visibility))]))
+(set! abstraction-slider (new blue-slider-canvas%
+                              [parent slider-row]
+                              [min-width 300]
+                              [min-height 30]
+                              [stretchable-width #f]
+                              [stretchable-height #f]
+                              [min-val 0]
+                              [max-val 3]
+                              [init-val 3]
+                              [on-change (lambda (val)
+                                          (set! current-abstraction-level val)
+                                          (update-display-layout))]))
 
-(set! show-ir-checkbox (new check-box%
-                        [parent visibility-panel]
-                        [label "Intermediate Representation"]
-                        [value #t]
-                        [callback (lambda (checkbox event)
-                                    (update-panel-visibility))]))
+;; Add level labels directly beneath slider with bidirectional arrows
+(define level-labels-panel (new horizontal-panel%
+                                [parent slider-container]
+                                [stretchable-height #f]
+                                [alignment '(center center)]
+                                [min-width 300]
+                                [stretchable-width #f]))
+
+(new message% [parent level-labels-panel] [label "OpenSLO"])
+(new message% [parent level-labels-panel] [label " ↔ "])
+(new message% [parent level-labels-panel] [label "IR"])
+(new message% [parent level-labels-panel] [label " ↔ "])
+(new message% [parent level-labels-panel] [label "Editor"])
+(new message% [parent level-labels-panel] [label " ↔ "])
+(new message% [parent level-labels-panel] [label "Graph"])
 
 ;; Create bottom panel for main buttons
 (define button-panel (new horizontal-panel% 
@@ -792,8 +761,23 @@ authentication_service -> veggie
 ;; Start file watching
 (start-file-watcher (path->string caffeine-file) on-file-changed 0.5)
 
-;; Initialize the layout with all panels visible
-(update-panel-visibility)
+;; Initialize the layout with the default abstraction level
+(update-display-layout)
 
 ;; Show the frame
-(send frame show #t) 
+(send frame show #t)
+
+;; Schedule multiple delayed layout refreshes to ensure proper initial sizing
+(queue-callback
+ (lambda ()
+   (update-display-layout)
+   ;; Force container reflow after layout update
+   (send main-container reflow-container)
+   ;; Schedule another refresh to ensure everything is properly sized
+   (queue-callback
+    (lambda ()
+      (update-display-layout)
+      (when graph-canvas
+        (send graph-canvas refresh-now)))
+    #f))
+ #f) 
